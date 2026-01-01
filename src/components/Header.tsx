@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { Menu, X, Radio, Headphones } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Menu, X, Radio, Headphones, LogIn, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import LiveBadge from "./LiveBadge";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
 
   const navLinks = [
     { label: "Schedule", href: "#schedule" },
@@ -49,6 +52,19 @@ const Header = () => {
               <Headphones size={16} />
               Listen Live
             </Button>
+            {user ? (
+              <Button variant="ghost" size="sm" className="gap-2" onClick={signOut}>
+                <LogOut size={16} />
+                Sign Out
+              </Button>
+            ) : (
+              <Link to="/auth">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <LogIn size={16} />
+                  Sign In
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -80,6 +96,19 @@ const Header = () => {
                 <Headphones size={16} />
                 Listen Live
               </Button>
+              {user ? (
+                <Button variant="ghost" className="w-full mt-2 gap-2" onClick={signOut}>
+                  <LogOut size={16} />
+                  Sign Out
+                </Button>
+              ) : (
+                <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full mt-2 gap-2">
+                    <LogIn size={16} />
+                    Sign In
+                  </Button>
+                </Link>
+              )}
             </nav>
           </div>
         )}
