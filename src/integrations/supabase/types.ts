@@ -14,16 +14,335 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      donations: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string | null
+          donor_email: string | null
+          donor_name: string | null
+          id: string
+          message: string | null
+          payment_method: string
+          payment_status: string | null
+          transaction_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string | null
+          donor_email?: string | null
+          donor_name?: string | null
+          id?: string
+          message?: string | null
+          payment_method: string
+          payment_status?: string | null
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string | null
+          donor_email?: string | null
+          donor_name?: string | null
+          id?: string
+          message?: string | null
+          payment_method?: string
+          payment_status?: string | null
+          transaction_id?: string | null
+        }
+        Relationships: []
+      }
+      listener_stats: {
+        Row: {
+          country: string | null
+          id: string
+          listener_count: number | null
+          recorded_at: string
+        }
+        Insert: {
+          country?: string | null
+          id?: string
+          listener_count?: number | null
+          recorded_at?: string
+        }
+        Update: {
+          country?: string | null
+          id?: string
+          listener_count?: number | null
+          recorded_at?: string
+        }
+        Relationships: []
+      }
+      now_playing: {
+        Row: {
+          dj_name: string | null
+          id: string
+          show_id: string | null
+          started_at: string | null
+          track_artist: string | null
+          track_title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          dj_name?: string | null
+          id?: string
+          show_id?: string | null
+          started_at?: string | null
+          track_artist?: string | null
+          track_title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          dj_name?: string | null
+          id?: string
+          show_id?: string | null
+          started_at?: string | null
+          track_artist?: string | null
+          track_title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "now_playing_show_id_fkey"
+            columns: ["show_id"]
+            isOneToOne: false
+            referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playlists: {
+        Row: {
+          created_at: string
+          description: string | null
+          dj_id: string | null
+          id: string
+          is_public: boolean | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          dj_id?: string | null
+          id?: string
+          is_public?: boolean | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          dj_id?: string | null
+          id?: string
+          is_public?: boolean | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlists_dj_id_fkey"
+            columns: ["dj_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      schedule: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_recurring: boolean | null
+          show_id: string | null
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_recurring?: boolean | null
+          show_id?: string | null
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_recurring?: boolean | null
+          show_id?: string | null
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_show_id_fkey"
+            columns: ["show_id"]
+            isOneToOne: false
+            referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shows: {
+        Row: {
+          created_at: string
+          description: string | null
+          genre: string | null
+          host_id: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          genre?: string | null
+          host_id?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          genre?: string | null
+          host_id?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shows_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tracks: {
+        Row: {
+          album: string | null
+          artist: string
+          created_at: string
+          duration: number | null
+          file_url: string | null
+          id: string
+          playlist_id: string | null
+          position: number | null
+          title: string
+        }
+        Insert: {
+          album?: string | null
+          artist: string
+          created_at?: string
+          duration?: number | null
+          file_url?: string | null
+          id?: string
+          playlist_id?: string | null
+          position?: number | null
+          title: string
+        }
+        Update: {
+          album?: string | null
+          artist?: string
+          created_at?: string
+          duration?: number | null
+          file_url?: string | null
+          id?: string
+          playlist_id?: string | null
+          position?: number | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracks_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["user_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["user_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin_or_dj: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      user_role: "admin" | "dj" | "moderator" | "listener"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +469,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ["admin", "dj", "moderator", "listener"],
+    },
   },
 } as const
