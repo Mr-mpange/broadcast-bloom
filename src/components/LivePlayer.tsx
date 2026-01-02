@@ -4,26 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import Waveform from "./Waveform";
 import LiveBadge from "./LiveBadge";
-
-interface NowPlaying {
-  title: string;
-  artist: string;
-  show: string;
-  dj: string;
-  albumArt?: string;
-}
+import { useNowPlaying } from "@/hooks/useNowPlaying";
 
 const LivePlayer = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState([75]);
   const [isMuted, setIsMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const { nowPlaying: liveData, loading } = useNowPlaying();
 
-  const nowPlaying: NowPlaying = {
-    title: "African Giant",
-    artist: "Burna Boy",
-    show: "Afrobeats Takeover",
-    dj: "DJ Spinall",
+  // Fallback to defaults if no live data
+  const displayData = {
+    title: liveData?.track_title || "Waiting for track...",
+    artist: liveData?.track_artist || "Unknown Artist",
+    show: "Live Radio",
+    dj: liveData?.dj_name || "AutoDJ",
   };
 
   const togglePlay = () => {
@@ -53,12 +48,12 @@ const LivePlayer = () => {
           <LiveBadge size="lg" />
           <div>
             <p className="text-sm text-muted-foreground">Currently on air</p>
-            <h3 className="font-display font-semibold text-foreground">{nowPlaying.show}</h3>
+            <h3 className="font-display font-semibold text-foreground">{displayData.show}</h3>
           </div>
         </div>
         <div className="text-right">
           <p className="text-xs text-muted-foreground">Hosted by</p>
-          <p className="font-medium text-primary">{nowPlaying.dj}</p>
+          <p className="font-medium text-primary">{displayData.dj}</p>
         </div>
       </div>
 
@@ -72,9 +67,9 @@ const LivePlayer = () => {
       <div className="text-center mb-8">
         <p className="text-sm text-muted-foreground mb-1">Now Playing</p>
         <h2 className="font-display text-2xl font-bold text-foreground mb-1 glow-text">
-          {nowPlaying.title}
+          {loading ? "Loading..." : displayData.title}
         </h2>
-        <p className="text-lg text-muted-foreground">{nowPlaying.artist}</p>
+        <p className="text-lg text-muted-foreground">{displayData.artist}</p>
       </div>
 
       {/* Player Controls */}

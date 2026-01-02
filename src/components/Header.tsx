@@ -1,13 +1,34 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X, Radio, Headphones, LogIn, LogOut, User } from "lucide-react";
+import { Menu, X, Radio, Headphones, LogIn, LogOut, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import LiveBadge from "./LiveBadge";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDJOrAdmin, setIsDJOrAdmin] = useState(false);
   const { user, signOut } = useAuth();
+
+  useEffect(() => {
+    if (!user) {
+      setIsDJOrAdmin(false);
+      return;
+    }
+
+    const checkRole = async () => {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .in("role", ["dj", "admin"]);
+      
+      setIsDJOrAdmin(data && data.length > 0);
+    };
+
+    checkRole();
+  }, [user]);
 
   const navLinks = [
     { label: "Schedule", href: "#schedule" },
@@ -52,6 +73,14 @@ const Header = () => {
               <Headphones size={16} />
               Listen Live
             </Button>
+            {isDJOrAdmin && (
+              <Link to="/dj">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <LayoutDashboard size={16} />
+                  Dashboard
+                </Button>
+              </Link>
+            )}
             {user ? (
               <Button variant="ghost" size="sm" className="gap-2" onClick={signOut}>
                 <LogOut size={16} />
@@ -96,6 +125,14 @@ const Header = () => {
                 <Headphones size={16} />
                 Listen Live
               </Button>
+              {isDJOrAdmin && (
+                <Link to="/dj" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="outline" className="w-full mt-2 gap-2">
+                    <LayoutDashboard size={16} />
+                    Dashboard
+                  </Button>
+                </Link>
+              )}
               {user ? (
                 <Button variant="ghost" className="w-full mt-2 gap-2" onClick={signOut}>
                   <LogOut size={16} />
