@@ -1,79 +1,50 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Clock, Users, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import LiveBadge from "./LiveBadge";
-
-interface Show {
-  id: number;
-  name: string;
-  dj: string;
-  startTime: string;
-  endTime: string;
-  displayTime: string;
-  image: string;
-  isLive: boolean;
-  progress?: number;
-}
+import { useSchedule } from "@/hooks/useSchedule";
 
 const ScheduleSection = () => {
-  const [activeDay, setActiveDay] = useState("Tue");
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const today = new Date().getDay();
+  const [activeDayIndex, setActiveDayIndex] = useState(today);
   
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const { scheduleShows, loading } = useSchedule(activeDayIndex);
 
-  const shows: Show[] = [
-    { 
-      id: 1, 
-      name: "Morning Grooves", 
-      dj: "", 
-      startTime: "08:00", 
-      endTime: "10:00 AM",
-      displayTime: "03:00 - 10:0 AM",
-      image: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=100&h=100&fit=crop",
-      isLive: true,
-      progress: 65,
-    },
-    { 
-      id: 2, 
-      name: "Afternoon Vibes", 
-      dj: "DJ Mike", 
-      startTime: "08:00", 
-      endTime: "12:00 AM",
-      displayTime: "11-80 AM",
-      image: "https://images.unsplash.com/photo-1559386484-97dfc0e15539?w=100&h=100&fit=crop",
-      isLive: false,
-    },
-    { 
-      id: 3, 
-      name: "Talk & Tunes", 
-      dj: "DJ Karen", 
-      startTime: "11:00", 
-      endTime: "11:00 AM",
-      displayTime: "3:40 PM",
-      image: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=100&h=100&fit=crop",
-      isLive: false,
-    },
-    { 
-      id: 4, 
-      name: "Evening Chill", 
-      dj: "DJ Chris", 
-      startTime: "11:00", 
-      endTime: "2:00 PM",
-      displayTime: "3:00 PM",
-      image: "https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=100&h=100&fit=crop",
-      isLive: false,
-    },
-    { 
-      id: 5, 
-      name: "Late Night Hits", 
-      dj: "DJ Zoe", 
-      startTime: "11:00", 
-      endTime: "3:00 PM",
-      displayTime: "4:00 PM",
-      image: "https://images.unsplash.com/photo-1534308143481-c55f00be8bd7?w=100&h=100&fit=crop",
-      isLive: false,
-    },
-  ];
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(":");
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  const isShowLive = (startTime: string, endTime: string) => {
+    const now = new Date();
+    const currentDay = now.getDay();
+    if (currentDay !== activeDayIndex) return false;
+    
+    const [startH, startM] = startTime.split(":").map(Number);
+    const [endH, endM] = endTime.split(":").map(Number);
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  };
+
+  const getProgress = (startTime: string, endTime: string) => {
+    const now = new Date();
+    const [startH, startM] = startTime.split(":").map(Number);
+    const [endH, endM] = endTime.split(":").map(Number);
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+    
+    return Math.min(100, Math.max(0, ((currentMinutes - startMinutes) / (endMinutes - startMinutes)) * 100));
+  };
 
   return (
     <section id="schedule" className="py-16 bg-background relative overflow-hidden">
@@ -87,13 +58,13 @@ const ScheduleSection = () => {
             
             {/* Day Tabs */}
             <div className="flex gap-1 mb-6 overflow-x-auto pb-2">
-              {days.map((day) => (
+              {days.map((day, index) => (
                 <button
                   key={day}
-                  onClick={() => setActiveDay(day)}
+                  onClick={() => setActiveDayIndex(index)}
                   className={cn(
                     "px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
-                    activeDay === day
+                    activeDayIndex === index
                       ? "bg-foreground text-background"
                       : "text-muted-foreground hover:text-foreground"
                   )}
@@ -105,68 +76,84 @@ const ScheduleSection = () => {
 
             {/* Shows List */}
             <div className="space-y-3">
-              {shows.map((show) => (
-                <div
-                  key={show.id}
-                  className={cn(
-                    "glass-panel rounded-xl p-4 transition-all duration-300",
-                    show.isLive && "border-primary/30 bg-primary/5"
-                  )}
-                >
-                  <div className="flex items-center gap-4">
-                    {/* DJ Image */}
-                    <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                      <img 
-                        src={show.image} 
-                        alt={show.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-
-                    {/* Show Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-foreground truncate">
-                          {show.name}
-                        </h3>
-                        {show.dj && (
-                          <span className="text-muted-foreground text-sm">
-                            with {show.dj}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-muted-foreground text-sm">
-                        {show.startTime} - {show.endTime}
-                      </p>
-                      {show.isLive && show.progress && (
-                        <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-secondary rounded-full"
-                            style={{ width: `${show.progress}%` }}
+              {loading ? (
+                <div className="text-center py-8 text-muted-foreground">Loading schedule...</div>
+              ) : scheduleShows.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">No shows scheduled for this day.</div>
+              ) : (
+                scheduleShows.map((item) => {
+                  const show = item.show;
+                  if (!show) return null;
+                  const isLive = isShowLive(item.start_time, item.end_time);
+                  const progress = isLive ? getProgress(item.start_time, item.end_time) : 0;
+                  
+                  return (
+                    <Link
+                      key={item.id}
+                      to={`/shows/${show.id}`}
+                      className={cn(
+                        "glass-panel rounded-xl p-4 transition-all duration-300 block hover:bg-muted/50",
+                        isLive && "border-primary/30 bg-primary/5"
+                      )}
+                    >
+                      <div className="flex items-center gap-4">
+                        {/* DJ Image */}
+                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                          <img 
+                            src={show.image_url || "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=100&h=100&fit=crop"} 
+                            alt={show.name}
+                            className="w-full h-full object-cover"
                           />
                         </div>
-                      )}
-                    </div>
 
-                    {/* Right Side */}
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-muted-foreground text-sm hidden sm:block">
-                        {show.displayTime}
-                      </span>
-                      {show.isLive ? (
-                        <LiveBadge size="sm" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                          <Users size={14} className="text-muted-foreground" />
+                        {/* Show Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-foreground truncate">
+                              {show.name}
+                            </h3>
+                            {show.host?.display_name && (
+                              <span className="text-muted-foreground text-sm">
+                                with {show.host.display_name}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-muted-foreground text-sm">
+                            {formatTime(item.start_time)} - {formatTime(item.end_time)}
+                          </p>
+                          {isLive && (
+                            <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-secondary rounded-full"
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          )}
                         </div>
-                      )}
-                      <button className="text-muted-foreground hover:text-foreground">
-                        <MoreHorizontal size={18} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+
+                        {/* Right Side */}
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          {show.genre && (
+                            <span className="text-muted-foreground text-xs hidden sm:block px-2 py-1 bg-muted rounded-full">
+                              {show.genre}
+                            </span>
+                          )}
+                          {isLive ? (
+                            <LiveBadge size="sm" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                              <Users size={14} className="text-muted-foreground" />
+                            </div>
+                          )}
+                          <button className="text-muted-foreground hover:text-foreground">
+                            <MoreHorizontal size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
             </div>
 
             {/* Ongoing Shows Bar */}
