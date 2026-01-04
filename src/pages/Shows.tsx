@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Search, Music, Filter, Radio } from "lucide-react";
+import { Search, Music, Filter, Radio, Heart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useFavorites } from "@/hooks/useFavorites";
+import { cn } from "@/lib/utils";
 
 interface Show {
   id: string;
@@ -27,13 +38,16 @@ interface Show {
   } | null;
 }
 
+const ITEMS_PER_PAGE = 12;
+
 const Shows = () => {
   const [shows, setShows] = useState<Show[]>([]);
-  const [filteredShows, setFilteredShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
   const [genres, setGenres] = useState<string[]>([]);
   const [selectedGenre, setSelectedGenre] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   useEffect(() => {
     const fetchShows = async () => {
@@ -87,7 +101,6 @@ const Shows = () => {
       }));
 
       setShows(combinedShows);
-      setFilteredShows(combinedShows);
 
       // Extract unique genres
       const uniqueGenres = [...new Set(combinedShows.map(s => s.genre).filter(Boolean))] as string[];
@@ -99,7 +112,12 @@ const Shows = () => {
     fetchShows();
   }, []);
 
+  // Reset page when filters change
   useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedGenre, searchQuery]);
+
+  const filteredShows = useMemo(() => {
     let result = shows;
 
     // Filter by genre
@@ -118,8 +136,42 @@ const Shows = () => {
       );
     }
 
-    setFilteredShows(result);
+    return result;
   }, [shows, selectedGenre, searchQuery]);
+
+  const totalPages = Math.ceil(filteredShows.length / ITEMS_PER_PAGE);
+  const paginatedShows = filteredShows.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const getPageNumbers = () => {
+    const pages: (number | "ellipsis")[] = [];
+    
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+      
+      if (currentPage > 3) {
+        pages.push("ellipsis");
+      }
+      
+      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+        pages.push(i);
+      }
+      
+      if (currentPage < totalPages - 2) {
+        pages.push("ellipsis");
+      }
+      
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -198,15 +250,14 @@ const Shows = () => {
               <>
                 <div className="flex items-center justify-between mb-8">
                   <p className="text-muted-foreground">
-                    Showing <span className="text-foreground font-medium">{filteredShows.length}</span>{" "}
-                    {filteredShows.length === 1 ? "show" : "shows"}
+                    Showing <span className="text-foreground font-medium">{(currentPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredShows.length)}</span>{" "}
+                    of <span className="text-foreground font-medium">{filteredShows.length}</span> shows
                   </p>
                 </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filteredShows.map((show) => (
-                    <Link
+                  {paginatedShows.map((show) => (
+                    <div
                       key={show.id}
-                      to={`/shows/${show.id}`}
                       className="group glass-panel rounded-2xl overflow-hidden hover:border-primary/50 transition-all duration-300"
                     >
                       <div className="aspect-video relative overflow-hidden">
@@ -216,13 +267,27 @@ const Shows = () => {
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+                        <button
+                          onClick={() => toggleFavorite(show.id)}
+                          className="absolute top-3 right-3 p-2 rounded-full bg-background/50 backdrop-blur-sm hover:bg-background/80 transition-colors z-10"
+                        >
+                          <Heart
+                            size={18}
+                            className={cn(
+                              "transition-colors",
+                              isFavorite(show.id)
+                                ? "fill-red-500 text-red-500"
+                                : "text-foreground"
+                            )}
+                          />
+                        </button>
                         {show.genre && (
                           <span className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-primary/90 text-primary-foreground text-xs font-medium">
                             {show.genre}
                           </span>
                         )}
                       </div>
-                      <div className="p-4">
+                      <Link to={`/shows/${show.id}`} className="block p-4">
                         <h3 className="font-display text-lg font-bold text-foreground mb-1 group-hover:text-primary transition-colors">
                           {show.name}
                         </h3>
@@ -234,10 +299,57 @@ const Shows = () => {
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {show.description || "Tune in for the best beats and entertainment."}
                         </p>
-                      </div>
-                    </Link>
+                      </Link>
+                    </div>
                   ))}
                 </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-12">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                            className={cn(
+                              "cursor-pointer",
+                              currentPage === 1 && "pointer-events-none opacity-50"
+                            )}
+                          />
+                        </PaginationItem>
+                        
+                        {getPageNumbers().map((page, index) =>
+                          page === "ellipsis" ? (
+                            <PaginationItem key={`ellipsis-${index}`}>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          ) : (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                onClick={() => setCurrentPage(page)}
+                                isActive={currentPage === page}
+                                className="cursor-pointer"
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          )
+                        )}
+                        
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                            className={cn(
+                              "cursor-pointer",
+                              currentPage === totalPages && "pointer-events-none opacity-50"
+                            )}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
               </>
             )}
           </div>
