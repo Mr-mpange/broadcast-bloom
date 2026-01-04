@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Clock, Calendar, Music, User, Play } from "lucide-react";
+import { ArrowLeft, Clock, Calendar, Music, User, Play, Twitter, Facebook, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useToast } from "@/hooks/use-toast";
 
 interface Show {
   id: string;
@@ -35,6 +36,36 @@ const ShowDetail = () => {
   const [show, setShow] = useState<Show | null>(null);
   const [schedule, setSchedule] = useState<ScheduleSlot[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const currentUrl = typeof window !== "undefined" ? window.location.href : "";
+  const shareText = show ? `Check out "${show.name}" on PULSE FM!` : "Check out this show on PULSE FM!";
+
+  const shareOnTwitter = () => {
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(currentUrl)}`;
+    window.open(twitterUrl, "_blank", "width=550,height=420");
+  };
+
+  const shareOnFacebook = () => {
+    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}&quote=${encodeURIComponent(shareText)}`;
+    window.open(facebookUrl, "_blank", "width=550,height=420");
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(currentUrl);
+      toast({
+        title: "Link copied!",
+        description: "Share link has been copied to clipboard.",
+      });
+    } catch {
+      toast({
+        title: "Failed to copy",
+        description: "Please copy the URL from your browser.",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     const fetchShow = async () => {
@@ -270,15 +301,37 @@ const ShowDetail = () => {
 
               {/* Share */}
               <div className="glass-panel rounded-2xl p-6">
-                <h3 className="font-display text-lg font-bold text-foreground mb-4">
+                <h3 className="font-display text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+                  <Share2 size={18} className="text-primary" />
                   Share This Show
                 </h3>
-                <div className="flex gap-3">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    Twitter
+                <div className="flex flex-col gap-3">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full gap-2 justify-start"
+                    onClick={shareOnTwitter}
+                  >
+                    <Twitter size={16} className="text-[#1DA1F2]" />
+                    Share on Twitter
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    Facebook
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full gap-2 justify-start"
+                    onClick={shareOnFacebook}
+                  >
+                    <Facebook size={16} className="text-[#1877F2]" />
+                    Share on Facebook
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full gap-2 justify-start"
+                    onClick={copyLink}
+                  >
+                    <Share2 size={16} />
+                    Copy Link
                   </Button>
                 </div>
               </div>

@@ -31,10 +31,10 @@ const Header = () => {
   }, [user]);
 
   const navLinks = [
-    { label: "Schedule", href: "#schedule" },
-    { label: "DJs", href: "#djs" },
-    { label: "Shows", href: "#shows" },
-    { label: "Contact", href: "#contact" },
+    { label: "Schedule", href: "/#schedule" },
+    { label: "DJs", href: "/#djs" },
+    { label: "Shows", href: "/shows" },
+    { label: "Contact", href: "/#contact" },
   ];
 
   return (
@@ -55,15 +55,25 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className="text-muted-foreground hover:text-foreground transition-colors font-medium"
-              >
-                {link.label}
-              </a>
-            ))}
+            {navLinks.map((link) => 
+              link.href.startsWith("/") && !link.href.includes("#") ? (
+                <Link
+                  key={link.label}
+                  to={link.href}
+                  className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+                >
+                  {link.label}
+                </a>
+              )
+            )}
           </nav>
 
           {/* CTA & Live Badge */}
@@ -111,16 +121,27 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-border animate-fade-in-up">
             <nav className="flex flex-col gap-4">
-              {navLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  className="text-muted-foreground hover:text-foreground transition-colors font-medium py-2"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {link.label}
-                </a>
-              ))}
+              {navLinks.map((link) => 
+                link.href.startsWith("/") && !link.href.includes("#") ? (
+                  <Link
+                    key={link.label}
+                    to={link.href}
+                    className="text-muted-foreground hover:text-foreground transition-colors font-medium py-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                ) : (
+                  <a
+                    key={link.label}
+                    href={link.href}
+                    className="text-muted-foreground hover:text-foreground transition-colors font-medium py-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {link.label}
+                  </a>
+                )
+              )}
               <Button variant="live" className="w-full mt-4 gap-2">
                 <Headphones size={16} />
                 Listen Live
