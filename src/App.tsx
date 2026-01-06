@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import DJDashboard from "./pages/DJDashboard";
 import ShowDetail from "./pages/ShowDetail";
 import Shows from "./pages/Shows";
+import Favorites from "./pages/Favorites";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/dj" element={<DJDashboard />} />
             <Route path="/shows" element={<Shows />} />
             <Route path="/shows/:id" element={<ShowDetail />} />
+            <Route path="/favorites" element={<Favorites />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
