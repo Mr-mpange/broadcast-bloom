@@ -1,12 +1,15 @@
-import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
-import { Clock, Users, MoreHorizontal } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Users, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import LiveBadge from "./LiveBadge";
 import { useSchedule } from "@/hooks/useSchedule";
+import { useAuth } from "@/hooks/useAuth";
 
 const ScheduleSection = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const today = new Date().getDay();
   const [activeDayIndex, setActiveDayIndex] = useState(today);
@@ -178,10 +181,13 @@ const ScheduleSection = () => {
                 Start Your Own Internet Radio Station
               </h3>
               <p className="text-muted-foreground text-sm mb-4">
-                Get a free 7 day trial
+                {user ? "Go to your dashboard to start broadcasting" : "Sign in as a DJ to start broadcasting"}
               </p>
-              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
-                Start Broadcasting
+              <Button 
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                onClick={() => navigate(user ? "/dashboard" : "/auth")}
+              >
+                {user ? "Go to Dashboard" : "Sign In to Broadcast"}
               </Button>
             </div>
 

@@ -1,7 +1,26 @@
-import { Headphones, Radio } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 const HeroSection = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const handleStartStreaming = () => {
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      navigate("/auth");
+    }
+  };
+
+  const handleListenLive = () => {
+    const scheduleSection = document.getElementById("schedule");
+    if (scheduleSection) {
+      scheduleSection.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
     <section className="relative min-h-[90vh] flex items-center pt-20 pb-16 overflow-hidden">
       {/* Background Image with Overlay */}
@@ -47,6 +66,7 @@ const HeroSection = () => {
               variant="default" 
               size="lg" 
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8"
+              onClick={handleStartStreaming}
             >
               Start Streaming
             </Button>
@@ -54,6 +74,7 @@ const HeroSection = () => {
               variant="outline" 
               size="lg" 
               className="border-primary/50 text-foreground hover:bg-primary/10 gap-2"
+              onClick={handleListenLive}
             >
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               Listen Live
