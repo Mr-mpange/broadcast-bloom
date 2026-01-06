@@ -113,6 +113,15 @@ export const useDJData = () => {
     return { error: error?.message || null };
   };
 
+  const refetchShows = async () => {
+    if (!profile) return;
+    const { data: showsData } = await supabase
+      .from("shows")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setShows(showsData || []);
+  };
+
   return {
     shows,
     listenerStats,
@@ -120,5 +129,6 @@ export const useDJData = () => {
     loading,
     updateNowPlaying,
     profile,
+    refetchShows,
   };
 };

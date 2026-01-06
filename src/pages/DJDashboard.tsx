@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDJData } from "@/hooks/useDJData";
 import { useNowPlaying } from "@/hooks/useNowPlaying";
 import Header from "@/components/Header";
+import ShowManagement from "@/components/ShowManagement";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,13 +16,12 @@ import {
   Users,
   Globe,
   Play,
-  Clock,
   TrendingUp,
 } from "lucide-react";
 
 const DJDashboard = () => {
   const { user, loading: authLoading } = useAuth();
-  const { shows, listenerStats, isDJ, loading, updateNowPlaying } = useDJData();
+  const { shows, listenerStats, isDJ, loading, updateNowPlaying, profile, refetchShows } = useDJData();
   const { nowPlaying } = useNowPlaying();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -253,55 +253,14 @@ const DJDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Shows List */}
-          <Card className="glass-panel border-border/50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-foreground">
-                <Clock className="h-5 w-5 text-primary" />
-                Your Shows
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {shows.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  No shows found. Create your first show to get started!
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {shows.map((show) => (
-                    <div
-                      key={show.id}
-                      className="p-4 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 transition-colors"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold text-foreground">
-                            {show.name}
-                          </h3>
-                          {show.genre && (
-                            <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                              {show.genre}
-                            </span>
-                          )}
-                          {show.description && (
-                            <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                              {show.description}
-                            </p>
-                          )}
-                        </div>
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            show.is_active ? "bg-green-500" : "bg-muted"
-                          }`}
-                          title={show.is_active ? "Active" : "Inactive"}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {/* Show Management */}
+          {profile && (
+            <ShowManagement 
+              shows={shows} 
+              profileId={profile.id} 
+              onShowsChange={refetchShows} 
+            />
+          )}
         </div>
 
         {/* Listener Stats */}

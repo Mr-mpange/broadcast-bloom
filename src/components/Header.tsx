@@ -34,6 +34,7 @@ const Header = () => {
     { label: "Schedule", href: "/#schedule" },
     { label: "DJs", href: "/#djs" },
     { label: "Shows", href: "/shows" },
+    { label: "Favorites", href: "/favorites" },
     { label: "Contact", href: "/#contact" },
   ];
 
