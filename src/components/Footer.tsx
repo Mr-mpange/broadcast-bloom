@@ -1,5 +1,6 @@
 import { Radio, Instagram, Twitter, Facebook, Youtube, Mail, Phone, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import AppStoreBadges from "@/components/AppStoreBadges";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -90,6 +91,12 @@ const Footer = () => {
                   </a>
                 </Button>
               ))}
+            </div>
+
+            {/* App Store Badges */}
+            <div className="mt-6">
+              <h5 className="font-semibold text-foreground mb-3 text-sm">Get the App</h5>
+              <AppStoreBadges className="flex-col" />
             </div>
           </div>
 

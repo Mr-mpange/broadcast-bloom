@@ -10,15 +10,26 @@ import TestimonialSection from "@/components/TestimonialSection";
 import ContactSection from "@/components/ContactSection";
 import Footer from "@/components/Footer";
 import MobilePlayer from "@/components/MobilePlayer";
+import LivePlayer from "@/components/LivePlayer";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main>
+      <main className="relative">
         <HeroSection />
         <HowItWorksSection />
         <FeaturedShowsCarousel />
+        
+        {/* Live Player Section */}
+        <section id="live-player" className="py-16 bg-muted/30">
+          <div className="container mx-auto px-4">
+            <div className="max-w-md mx-auto">
+              <LivePlayer />
+            </div>
+          </div>
+        </section>
+        
         <ScheduleSection />
         <DJSection />
         <FeaturesSection />

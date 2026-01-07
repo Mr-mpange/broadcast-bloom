@@ -185,9 +185,9 @@ const ScheduleSection = () => {
               </p>
               <Button 
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-                onClick={() => navigate(user ? "/dashboard" : "/auth")}
+                onClick={() => navigate(user ? "/dj" : "/auth")}
               >
-                {user ? "Go to Dashboard" : "Sign In to Broadcast"}
+                {user ? "Go to DJ Dashboard" : "Sign In to Broadcast"}
               </Button>
             </div>
 

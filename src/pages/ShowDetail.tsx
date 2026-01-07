@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import LiveChat from "@/components/LiveChat";
 import { useToast } from "@/hooks/use-toast";
 
 interface Show {
@@ -205,6 +206,9 @@ const ShowDetail = () => {
                 </p>
               </div>
 
+              {/* Live Chat */}
+              <LiveChat showId={show.id} className="h-96" />
+
               {/* Schedule */}
               {schedule.length > 0 && (
                 <div className="glass-panel rounded-2xl p-6 sm:p-8">
@@ -242,9 +246,11 @@ const ShowDetail = () => {
                       Listen to our live broadcast
                     </p>
                   </div>
-                  <Button size="lg" className="gap-2 bg-primary hover:bg-primary/90">
-                    <Play size={20} />
-                    Listen Live
+                  <Button size="lg" className="gap-2 bg-primary hover:bg-primary/90" asChild>
+                    <a href="/#live-player">
+                      <Play size={20} />
+                      Listen Live
+                    </a>
                   </Button>
                 </div>
               </div>

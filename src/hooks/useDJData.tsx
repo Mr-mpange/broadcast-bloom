@@ -94,23 +94,37 @@ export const useDJData = () => {
   ) => {
     if (!profile) return { error: "No profile found" };
 
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("user_id", user?.id)
-      .maybeSingle();
+    try {
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", user?.id)
+        .maybeSingle();
 
-    const { error } = await supabase.from("now_playing").upsert({
-      id: "current",
-      track_title: trackTitle,
-      track_artist: trackArtist,
-      dj_name: profileData?.display_name || "Unknown DJ",
-      show_id: showId || null,
-      started_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
+      // First, try to delete any existing "current" entry
+      await supabase.from("now_playing").delete().eq("id", "current");
 
-    return { error: error?.message || null };
+      // Then insert the new current track
+      const { error } = await supabase.from("now_playing").insert({
+        id: "current",
+        track_title: trackTitle,
+        track_artist: trackArtist,
+        dj_name: profileData?.display_name || "Unknown DJ",
+        show_id: showId || null,
+        started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+      if (error) {
+        console.error("Error updating now playing:", error);
+        return { error: error.message };
+      }
+
+      return { error: null };
+    } catch (err: any) {
+      console.error("Error in updateNowPlaying:", err);
+      return { error: err.message || "Failed to update now playing" };
+    }
   };
 
   const refetchShows = async () => {

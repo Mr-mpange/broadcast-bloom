@@ -5,10 +5,13 @@ import { useDJData } from "@/hooks/useDJData";
 import { useNowPlaying } from "@/hooks/useNowPlaying";
 import Header from "@/components/Header";
 import ShowManagement from "@/components/ShowManagement";
+import LiveShowManager from "@/components/LiveShowManager";
+import BlogManagement from "@/components/BlogManagement";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   Radio,
@@ -17,6 +20,7 @@ import {
   Globe,
   Play,
   TrendingUp,
+  FileText,
 } from "lucide-react";
 
 const DJDashboard = () => {
@@ -30,6 +34,7 @@ const DJDashboard = () => {
   const [trackArtist, setTrackArtist] = useState("");
   const [selectedShow, setSelectedShow] = useState("");
   const [updating, setUpdating] = useState(false);
+  const [canManageBlogs, setCanManageBlogs] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -41,12 +46,31 @@ const DJDashboard = () => {
     if (!loading && !isDJ && user) {
       toast({
         title: "Access Denied",
-        description: "You need DJ or Admin privileges to access this page.",
+        description: "You need DJ, Presenter, or Admin privileges to access this page.",
         variant: "destructive",
       });
       navigate("/");
     }
   }, [loading, isDJ, user, navigate, toast]);
+
+  useEffect(() => {
+    // Check if user can manage blogs (admin or presenter)
+    const checkBlogPermissions = async () => {
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .in("role", ["admin", "presenter"]);
+      
+      setCanManageBlogs(data && data.length > 0);
+    };
+
+    if (user) {
+      checkBlogPermissions();
+    }
+  }, [user]);
 
   const handleUpdateNowPlaying = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,6 +205,9 @@ const DJDashboard = () => {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
+          {/* Live Show Manager */}
+          <LiveShowManager shows={shows} />
+
           {/* Update Now Playing */}
           <Card className="glass-panel border-border/50">
             <CardHeader>
@@ -252,15 +279,37 @@ const DJDashboard = () => {
               </form>
             </CardContent>
           </Card>
+        </div>
 
-          {/* Show Management */}
-          {profile && (
-            <ShowManagement 
-              shows={shows} 
-              profileId={profile.id} 
-              onShowsChange={refetchShows} 
-            />
-          )}
+        {/* Tabbed Content */}
+        <div className="mt-6">
+          <Tabs defaultValue="shows" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="shows">Show Management</TabsTrigger>
+              {canManageBlogs && <TabsTrigger value="blogs">Blog Management</TabsTrigger>}
+            </TabsList>
+            
+            <TabsContent value="shows" className="mt-6">
+              {profile && (
+                <ShowManagement 
+                  shows={shows} 
+                  profileId={profile.id} 
+                  onShowsChange={refetchShows} 
+                />
+              )}
+            </TabsContent>
+            
+            {canManageBlogs && (
+              <TabsContent value="blogs" className="mt-6">
+                {profile && (
+                  <BlogManagement 
+                    profileId={profile.id} 
+                    canManageAll={profile.role === 'admin'} 
+                  />
+                )}
+              </TabsContent>
+            )}
+          </Tabs>
         </div>
 
         {/* Listener Stats */}

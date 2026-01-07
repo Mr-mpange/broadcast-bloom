@@ -15,4 +15,19 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          supabase: ['@supabase/supabase-js'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-toast']
+        }
+      }
+    }
+  },
+  // PWA optimizations
+  define: {
+    __PWA_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
+  }
 }));

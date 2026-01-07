@@ -8,16 +8,16 @@ const HeroSection = () => {
 
   const handleStartStreaming = () => {
     if (user) {
-      navigate("/dashboard");
+      navigate("/dj");
     } else {
       navigate("/auth");
     }
   };
 
   const handleListenLive = () => {
-    const scheduleSection = document.getElementById("schedule");
-    if (scheduleSection) {
-      scheduleSection.scrollIntoView({ behavior: "smooth" });
+    const livePlayerElement = document.getElementById('live-player');
+    if (livePlayerElement) {
+      livePlayerElement.scrollIntoView({ behavior: 'smooth' });
     }
   };
 

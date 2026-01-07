@@ -24,7 +24,8 @@ const Auth = () => {
 
   useEffect(() => {
     if (user) {
-      navigate("/");
+      // Redirect to appropriate dashboard based on user role
+      navigate("/dj");
     }
   }, [user, navigate]);
 

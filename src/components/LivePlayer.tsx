@@ -1,229 +1,364 @@
-import { useState, useRef, useEffect } from "react";
-import { Play, Pause, Volume2, VolumeX, SkipForward, Radio, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
-import Waveform from "./Waveform";
-import LiveBadge from "./LiveBadge";
-import { useNowPlaying } from "@/hooks/useNowPlaying";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { 
+  Play, 
+  Pause, 
+  Volume2, 
+  VolumeX, 
+  Heart, 
+  Share2,
+  Radio,
+  Users
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
-// Default demo stream URL (public radio stream)
-const DEFAULT_STREAM_URL = "https://stream.live.vc.bbcmedia.co.uk/bbc_radio_one";
+interface LiveShow {
+  id: string;
+  show_id: string;
+  started_at: string;
+  is_live: boolean;
+  shows: {
+    name: string;
+    description: string | null;
+    genre: string | null;
+    image_url: string | null;
+    host: {
+      display_name: string | null;
+    } | null;
+  };
+}
+
+interface NowPlaying {
+  track_title: string | null;
+  track_artist: string | null;
+  dj_name: string | null;
+}
 
 const LivePlayer = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState([75]);
   const [isMuted, setIsMuted] = useState(false);
-  const [streamUrl, setStreamUrl] = useState(DEFAULT_STREAM_URL);
-  const [showUrlInput, setShowUrlInput] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const { nowPlaying: liveData, loading } = useNowPlaying();
-
-  // Fallback to defaults if no live data
-  const displayData = {
-    title: liveData?.track_title || "Live Radio Stream",
-    artist: liveData?.track_artist || "Tune in now",
-    show: "Live Radio",
-    dj: liveData?.dj_name || "AutoDJ",
-  };
+  const [volume, setVolume] = useState(75);
+  const [liveShows, setLiveShows] = useState<LiveShow[]>([]);
+  const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
+  const [listenerCount, setListenerCount] = useState(0);
+  const [isFavorited, setIsFavorited] = useState(false);
 
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume[0] / 100;
-    }
+    fetchLiveShows();
+    fetchNowPlaying();
+    subscribeToUpdates();
   }, []);
 
-  const togglePlay = async () => {
-    if (!audioRef.current) return;
-
-    try {
-      setError(null);
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        setIsLoading(true);
-        audioRef.current.src = streamUrl;
-        await audioRef.current.play();
-        setIsPlaying(true);
-        setIsLoading(false);
-      }
-    } catch (err) {
-      setError("Failed to play stream. Check the URL or try another stream.");
-      setIsLoading(false);
-      setIsPlaying(false);
+  useEffect(() => {
+    if (user && liveShows.length > 0) {
+      checkIfFavorited();
     }
+  }, [user, liveShows]);
+
+  const fetchLiveShows = async () => {
+    const { data } = await supabase
+      .from('live_shows')
+      .select(`
+        *,
+        shows (
+          name,
+          description,
+          genre,
+          image_url,
+          host:profiles!shows_host_id_fkey (
+            display_name
+          )
+        )
+      `)
+      .eq('is_live', true)
+      .order('started_at', { ascending: false })
+      .limit(1);
+
+    if (data && data.length > 0) {
+      setLiveShows(data);
+    }
+  };
+
+  const fetchNowPlaying = async () => {
+    const { data } = await supabase
+      .from('now_playing')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(1);
+
+    if (data && data.length > 0) {
+      setNowPlaying(data[0]);
+    }
+  };
+
+  const subscribeToUpdates = () => {
+    const liveShowsChannel = supabase
+      .channel('live_shows_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'live_shows'
+        },
+        () => {
+          fetchLiveShows();
+        }
+      )
+      .subscribe();
+
+    const nowPlayingChannel = supabase
+      .channel('now_playing_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'now_playing'
+        },
+        () => {
+          fetchNowPlaying();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(liveShowsChannel);
+      supabase.removeChannel(nowPlayingChannel);
+    };
+  };
+
+  const checkIfFavorited = async () => {
+    if (!user || liveShows.length === 0) return;
+
+    const { data } = await supabase
+      .from('favorites')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('show_id', liveShows[0].show_id)
+      .single();
+
+    setIsFavorited(!!data);
+  };
+
+  const toggleFavorite = async () => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to add shows to your favorites.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (liveShows.length === 0) return;
+
+    const showId = liveShows[0].show_id;
+
+    if (isFavorited) {
+      const { error } = await supabase
+        .from('favorites')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('show_id', showId);
+
+      if (!error) {
+        setIsFavorited(false);
+        toast({ title: "Removed from favorites" });
+      }
+    } else {
+      const { error } = await supabase
+        .from('favorites')
+        .insert({
+          user_id: user.id,
+          show_id: showId
+        });
+
+      if (!error) {
+        setIsFavorited(true);
+        toast({ title: "Added to favorites!" });
+      }
+    }
+  };
+
+  const togglePlay = () => {
+    setIsPlaying(!isPlaying);
+    // Here you would integrate with your actual audio streaming service
+    toast({
+      title: isPlaying ? "Stream paused" : "Now streaming live!",
+      description: isPlaying ? "Audio stream paused" : "Connecting to live broadcast..."
+    });
   };
 
   const toggleMute = () => {
     setIsMuted(!isMuted);
-    if (audioRef.current) {
-      audioRef.current.muted = !isMuted;
+  };
+
+  const shareStream = async () => {
+    const shareData = {
+      title: liveShows.length > 0 ? `${liveShows[0].shows.name} - Live on PULSE FM` : 'PULSE FM Live Stream',
+      text: 'Listen to live radio on PULSE FM!',
+      url: window.location.origin
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        // Fallback to clipboard
+        await navigator.clipboard.writeText(shareData.url);
+        toast({ title: "Link copied to clipboard!" });
+      }
+    } else {
+      await navigator.clipboard.writeText(shareData.url);
+      toast({ title: "Link copied to clipboard!" });
     }
   };
 
-  const handleVolumeChange = (value: number[]) => {
-    setVolume(value);
-    if (audioRef.current) {
-      audioRef.current.volume = value[0] / 100;
-    }
-  };
-
-  const handleStreamUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setStreamUrl(e.target.value);
-  };
-
-  const handleStreamUrlSubmit = () => {
-    setShowUrlInput(false);
-    if (isPlaying && audioRef.current) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    }
-  };
-
-  const handleAudioError = () => {
-    setError("Stream unavailable. Try a different URL.");
-    setIsPlaying(false);
-    setIsLoading(false);
-  };
+  const currentShow = liveShows.length > 0 ? liveShows[0] : null;
 
   return (
-    <div className="player-card w-full max-w-2xl mx-auto">
-      {/* Live Indicator & Show Info */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <LiveBadge size="lg" />
-          <div>
-            <p className="text-sm text-muted-foreground">Currently on air</p>
-            <h3 className="font-display font-semibold text-foreground">{displayData.show}</h3>
+    <Card className="glass-panel border-border/50 sticky top-20 z-40">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <Radio className="h-5 w-5 text-primary" />
+            Live Stream
+          </CardTitle>
+          {currentShow && (
+            <Badge variant="destructive" className="gap-1">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              LIVE
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Current Show Info */}
+        {currentShow ? (
+          <div className="flex items-start gap-3">
+            {currentShow.shows.image_url && (
+              <img
+                src={currentShow.shows.image_url}
+                alt={currentShow.shows.name}
+                className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-foreground truncate">
+                {currentShow.shows.name}
+              </h3>
+              {currentShow.shows.host?.display_name && (
+                <p className="text-sm text-muted-foreground">
+                  with {currentShow.shows.host.display_name}
+                </p>
+              )}
+              {currentShow.shows.genre && (
+                <Badge variant="secondary" className="text-xs mt-1">
+                  {currentShow.shows.genre}
+                </Badge>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <Radio className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">No live shows currently</p>
+            <p className="text-xs text-muted-foreground">Check back later for live broadcasts</p>
+          </div>
+        )}
+
+        {/* Now Playing */}
+        {nowPlaying && (nowPlaying.track_title || nowPlaying.track_artist) && (
+          <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+            <p className="text-xs text-muted-foreground mb-1">Now Playing</p>
+            <p className="font-medium text-foreground text-sm">
+              {nowPlaying.track_title || "Unknown Track"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {nowPlaying.track_artist || "Unknown Artist"}
+            </p>
+          </div>
+        )}
+
+        {/* Player Controls */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button
+              size="icon"
+              variant={isPlaying ? "default" : "outline"}
+              onClick={togglePlay}
+              className="h-10 w-10"
+            >
+              {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={toggleMute}
+              className="h-8 w-8"
+            >
+              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Users size={12} />
+              <span>{listenerCount}</span>
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={toggleFavorite}
+              className={`h-8 w-8 ${isFavorited ? 'text-red-500' : ''}`}
+            >
+              <Heart size={16} fill={isFavorited ? 'currentColor' : 'none'} />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={shareStream}
+              className="h-8 w-8"
+            >
+              <Share2 size={16} />
+            </Button>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-muted-foreground">Hosted by</p>
-          <p className="font-medium text-primary">{displayData.dj}</p>
-        </div>
-      </div>
 
-      {/* Stream URL Input (optional) */}
-      {showUrlInput && (
-        <div className="mb-4 flex gap-2">
-          <Input
-            value={streamUrl}
-            onChange={handleStreamUrlChange}
-            placeholder="Enter stream URL..."
-            className="flex-1"
+        {/* Volume Control */}
+        <div className="flex items-center gap-2">
+          <VolumeX size={14} className="text-muted-foreground" />
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={isMuted ? 0 : volume}
+            onChange={(e) => setVolume(parseInt(e.target.value))}
+            className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer"
           />
-          <Button onClick={handleStreamUrlSubmit} size="sm">
-            Set
-          </Button>
-        </div>
-      )}
-
-      {/* Error Message */}
-      {error && (
-        <div className="mb-4 flex items-center gap-2 text-destructive text-sm p-3 rounded-lg bg-destructive/10">
-          <AlertCircle size={16} />
-          <span>{error}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto"
-            onClick={() => setShowUrlInput(true)}
-          >
-            Change URL
-          </Button>
-        </div>
-      )}
-
-      {/* Waveform Visualization */}
-      <div className="relative py-4 mb-6">
-        <Waveform isPlaying={isPlaying} barCount={50} className="h-20" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-background pointer-events-none" />
-      </div>
-
-      {/* Now Playing */}
-      <div className="text-center mb-8">
-        <p className="text-sm text-muted-foreground mb-1">Now Playing</p>
-        <h2 className="font-display text-2xl font-bold text-foreground mb-1 glow-text">
-          {loading ? "Loading..." : displayData.title}
-        </h2>
-        <p className="text-lg text-muted-foreground">{displayData.artist}</p>
-      </div>
-
-      {/* Player Controls */}
-      <div className="flex items-center justify-center gap-6">
-        {/* Volume */}
-        <div className="flex items-center gap-2 w-32">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleMute}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            {isMuted || volume[0] === 0 ? (
-              <VolumeX size={20} />
-            ) : (
-              <Volume2 size={20} />
-            )}
-          </Button>
-          <Slider
-            value={isMuted ? [0] : volume}
-            onValueChange={handleVolumeChange}
-            max={100}
-            step={1}
-            className="flex-1"
-          />
+          <Volume2 size={14} className="text-muted-foreground" />
         </div>
 
-        {/* Play Button */}
-        <Button
-          variant="player"
-          size="icon-xl"
-          onClick={togglePlay}
-          className="relative"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <div className="w-8 h-8 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-          ) : isPlaying ? (
-            <Pause size={32} className="ml-0" />
-          ) : (
-            <Play size={32} className="ml-1" />
-          )}
-        </Button>
-
-        {/* Settings */}
-        <div className="w-32 flex justify-end">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowUrlInput(!showUrlInput)}
-            className="text-muted-foreground hover:text-foreground"
-            title="Change stream URL"
-          >
-            <Radio size={20} />
-          </Button>
-        </div>
-      </div>
-
-      {/* Listener Count */}
-      <div className="flex items-center justify-center gap-2 mt-6 text-muted-foreground">
-        <Radio size={14} className="text-primary" />
-        <span className="text-sm">
-          <span className="font-semibold text-foreground">Live</span> streaming worldwide
-        </span>
-      </div>
-
-      {/* Hidden audio element for actual streaming */}
-      <audio
-        ref={audioRef}
-        preload="none"
-        onError={handleAudioError}
-        onEnded={() => setIsPlaying(false)}
-      />
-    </div>
+        {/* Call to Action for Anonymous Users */}
+        {!user && (
+          <div className="text-center p-3 rounded-lg bg-primary/10 border border-primary/20">
+            <p className="text-sm text-foreground mb-2">
+              Want to get notified when your favorite shows go live?
+            </p>
+            <Button variant="outline" size="sm" asChild>
+              <a href="/auth">Sign Up Free</a>
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

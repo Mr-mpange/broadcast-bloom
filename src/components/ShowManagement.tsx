@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Edit2, Trash2, Calendar, Clock } from "lucide-react";
+import ImageUpload from "./ImageUpload";
 
 interface Show {
   id: string;
@@ -255,14 +256,12 @@ const ShowManagement = ({ shows, profileId, onShowsChange }: ShowManagementProps
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label>Image URL</Label>
-                  <Input
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="https://example.com/image.jpg"
-                  />
-                </div>
+                <ImageUpload
+                  currentImageUrl={imageUrl}
+                  onImageUploaded={setImageUrl}
+                  onImageRemoved={() => setImageUrl("")}
+                  userId={profileId}
+                />
                 <Button onClick={handleCreateShow} disabled={loading} className="w-full">
                   {loading ? "Creating..." : "Create Show"}
                 </Button>
@@ -382,14 +381,12 @@ const ShowManagement = ({ shows, profileId, onShowsChange }: ShowManagementProps
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Image URL</Label>
-                <Input
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://example.com/image.jpg"
-                />
-              </div>
+              <ImageUpload
+                currentImageUrl={imageUrl}
+                onImageUploaded={setImageUrl}
+                onImageRemoved={() => setImageUrl("")}
+                userId={profileId}
+              />
               <Button onClick={handleUpdateShow} disabled={loading} className="w-full">
                 {loading ? "Updating..." : "Update Show"}
               </Button>

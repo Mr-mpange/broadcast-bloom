@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import LiveBadge from "./LiveBadge";
+import NotificationCenter from "./NotificationCenter";
+import LiveStatus from "./LiveStatus";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -79,11 +81,14 @@ const Header = () => {
 
           {/* CTA & Live Badge */}
           <div className="hidden md:flex items-center gap-4">
-            <LiveBadge size="sm" />
-            <Button variant="live" size="sm" className="gap-2">
-              <Headphones size={16} />
-              Listen Live
+            <LiveStatus />
+            <Button variant="live" size="sm" className="gap-2" asChild>
+              <a href="#live-player">
+                <Headphones size={16} />
+                Listen Live
+              </a>
             </Button>
+            {user && <NotificationCenter />}
             {isDJOrAdmin && (
               <Link to="/dj">
                 <Button variant="outline" size="sm" className="gap-2">
@@ -121,6 +126,9 @@ const Header = () => {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-border animate-fade-in-up">
+            <div className="mb-4 px-2">
+              <LiveStatus />
+            </div>
             <nav className="flex flex-col gap-4">
               {navLinks.map((link) => 
                 link.href.startsWith("/") && !link.href.includes("#") ? (
@@ -143,9 +151,11 @@ const Header = () => {
                   </a>
                 )
               )}
-              <Button variant="live" className="w-full mt-4 gap-2">
-                <Headphones size={16} />
-                Listen Live
+              <Button variant="live" className="w-full mt-4 gap-2" asChild>
+                <a href="#live-player">
+                  <Headphones size={16} />
+                  Listen Live
+                </a>
               </Button>
               {isDJOrAdmin && (
                 <Link to="/dj" onClick={() => setIsMenuOpen(false)}>
