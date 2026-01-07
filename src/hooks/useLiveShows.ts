@@ -85,62 +85,111 @@ export const useLiveShows = () => {
   };
 
   const startLiveShow = async (showId: string) => {
-    const { data, error } = await supabase
-      .from('live_shows')
-      .insert({
-        show_id: showId,
-        is_live: true
-      })
-      .select(`
-        *,
-        shows (
-          name,
-          image_url
-        )
-      `)
-      .single();
+    try {
+      // Use the database function to properly start live show
+      const { data, error } = await supabase.rpc('start_live_show', {
+        p_show_id: showId
+      });
 
-    if (error) {
+      if (error) {
+        console.error('Error starting live show:', error);
+        toast({
+          title: "Failed to start live show",
+          description: error.message,
+          variant: "destructive"
+        });
+        return { error };
+      }
+
+      // Fetch the created live show with show details
+      const { data: liveShowData, error: fetchError } = await supabase
+        .from('live_shows')
+        .select(`
+          *,
+          shows (
+            name,
+            image_url
+          )
+        `)
+        .eq('id', data)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching live show data:', fetchError);
+        toast({
+          title: "Show started but failed to load details",
+          description: "Please refresh the page",
+          variant: "destructive"
+        });
+        return { error: fetchError };
+      }
+
+      toast({
+        title: "Show is now live!",
+        description: "Listeners will be notified about your live broadcast."
+      });
+
+      // Manually add to state to ensure immediate UI update
+      setLiveShows(prev => {
+        const filtered = prev.filter(show => show.show_id !== showId);
+        return [liveShowData, ...filtered];
+      });
+
+      return { data: liveShowData };
+    } catch (err: any) {
+      console.error('Unexpected error starting live show:', err);
       toast({
         title: "Failed to start live show",
-        description: error.message,
+        description: "An unexpected error occurred",
         variant: "destructive"
       });
-      return { error };
+      return { error: err };
     }
-
-    toast({
-      title: "Show is now live!",
-      description: "Listeners will be notified about your live broadcast."
-    });
-
-    return { data };
   };
 
   const endLiveShow = async (liveShowId: string) => {
-    const { error } = await supabase
-      .from('live_shows')
-      .update({
-        ended_at: new Date().toISOString(),
-        is_live: false
-      })
-      .eq('id', liveShowId);
+    try {
+      const { data, error } = await supabase.rpc('end_live_show', {
+        p_live_show_id: liveShowId
+      });
 
-    if (error) {
+      if (error) {
+        console.error('Error ending live show:', error);
+        toast({
+          title: "Failed to end live show",
+          description: error.message,
+          variant: "destructive"
+        });
+        return { error };
+      }
+
+      if (!data) {
+        toast({
+          title: "Show was not live",
+          description: "The show may have already ended",
+          variant: "destructive"
+        });
+        return { error: "Show was not live" };
+      }
+
+      toast({
+        title: "Show ended",
+        description: "Your live broadcast has ended."
+      });
+
+      // Remove from state immediately
+      setLiveShows(prev => prev.filter(show => show.id !== liveShowId));
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Unexpected error ending live show:', err);
       toast({
         title: "Failed to end live show",
-        description: error.message,
+        description: "An unexpected error occurred",
         variant: "destructive"
       });
-      return { error };
+      return { error: err };
     }
-
-    toast({
-      title: "Show ended",
-      description: "Your live broadcast has ended."
-    });
-
-    return { success: true };
   };
 
   return {

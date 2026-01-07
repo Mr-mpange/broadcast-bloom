@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { useListenerTracking } from "@/hooks/useListenerTracking";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Play, 
@@ -46,8 +47,10 @@ const LivePlayer = () => {
   const [volume, setVolume] = useState(75);
   const [liveShows, setLiveShows] = useState<LiveShow[]>([]);
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
-  const [listenerCount, setListenerCount] = useState(0);
   const [isFavorited, setIsFavorited] = useState(false);
+  
+  const currentLiveShow = liveShows.length > 0 ? liveShows[0] : null;
+  const { listenerCount, isListening, startListening, stopListening } = useListenerTracking(currentLiveShow?.id);
 
   useEffect(() => {
     fetchLiveShows();
@@ -187,13 +190,36 @@ const LivePlayer = () => {
     }
   };
 
-  const togglePlay = () => {
-    setIsPlaying(!isPlaying);
+  const togglePlay = async () => {
+    if (!currentLiveShow) {
+      toast({
+        title: "No live show",
+        description: "There are no live shows currently broadcasting.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newPlayingState = !isPlaying;
+    setIsPlaying(newPlayingState);
+    
+    if (newPlayingState) {
+      // Start listening session
+      await startListening();
+      toast({
+        title: "Now streaming live!",
+        description: "Connecting to live broadcast..."
+      });
+    } else {
+      // Stop listening session
+      await stopListening();
+      toast({
+        title: "Stream paused",
+        description: "Audio stream paused"
+      });
+    }
+    
     // Here you would integrate with your actual audio streaming service
-    toast({
-      title: isPlaying ? "Stream paused" : "Now streaming live!",
-      description: isPlaying ? "Audio stream paused" : "Connecting to live broadcast..."
-    });
   };
 
   const toggleMute = () => {

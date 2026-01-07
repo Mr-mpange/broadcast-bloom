@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Radio, Users } from "lucide-react";
+import { useListenerTracking } from "@/hooks/useListenerTracking";
 
 interface LiveShow {
   id: string;
@@ -15,18 +16,12 @@ interface LiveShow {
 
 const LiveStatus = () => {
   const [liveShows, setLiveShows] = useState<LiveShow[]>([]);
-  const [listenerCount, setListenerCount] = useState(0);
+  const currentLiveShow = liveShows.length > 0 ? liveShows[0] : null;
+  const { listenerCount } = useListenerTracking(currentLiveShow?.id);
 
   useEffect(() => {
     fetchLiveShows();
     subscribeToLiveShows();
-    
-    // Simulate listener count (in a real app, this would come from your streaming service)
-    const interval = setInterval(() => {
-      setListenerCount(Math.floor(Math.random() * 500) + 50);
-    }, 5000);
-
-    return () => clearInterval(interval);
   }, []);
 
   const fetchLiveShows = async () => {

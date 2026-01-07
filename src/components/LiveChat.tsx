@@ -222,25 +222,41 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
     }
 
     setSending(true);
-    const { error } = await supabase
-      .from('chat_messages')
-      .insert({
-        room_id: chatRoom.id,
-        user_id: user.id,
-        username: user.user_metadata?.display_name || 'Anonymous',
-        message: newMessage.trim(),
-        message_type: 'text'
-      });
+    
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          room_id: chatRoom.id,
+          user_id: user.id,
+          username: user.user_metadata?.display_name || user.email?.split('@')[0] || 'Anonymous',
+          message: newMessage.trim(),
+          message_type: 'text'
+        });
 
-    if (error) {
+      if (error) {
+        console.error('Chat message error:', error);
+        toast({
+          title: "Failed to send message",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        setNewMessage("");
+        toast({
+          title: "Message sent!",
+          description: "Your message has been posted to the chat."
+        });
+      }
+    } catch (err: any) {
+      console.error('Unexpected chat error:', err);
       toast({
         title: "Failed to send message",
-        description: error.message,
+        description: "An unexpected error occurred",
         variant: "destructive"
       });
-    } else {
-      setNewMessage("");
     }
+    
     setSending(false);
   };
 
