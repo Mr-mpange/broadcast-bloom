@@ -15,10 +15,10 @@ import { Radio, Play, Square, Clock } from "lucide-react";
 interface Show {
   id: string;
   name: string;
-  description: string | null;
-  genre: string | null;
-  image_url: string | null;
-  is_active: boolean | null;
+  description?: string | null;
+  genre?: string | null;
+  image_url?: string | null;
+  is_active?: boolean | null;
 }
 
 interface LiveShowManagerProps {
@@ -54,21 +54,48 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
     setEnding(null);
   };
 
-  // Safely filter available shows with null checks
-  const availableShows = (shows || []).filter(show => 
-    show && 
-    show.id && 
-    show.name && 
-    show.is_active && 
-    !liveShows.some(live => live && live.id === show.id)
-  );
+  // Safely process shows data with comprehensive error handling
+  let availableShows: Show[] = [];
+  let validLiveShows: any[] = [];
 
-  // Safely filter live shows with null checks
-  const validLiveShows = (liveShows || []).filter(liveShow => 
-    liveShow && 
-    liveShow.id && 
-    liveShow.name
-  );
+  try {
+    // Safely filter available shows with null checks
+    availableShows = Array.isArray(shows) 
+      ? shows.filter(show => {
+          try {
+            return show && 
+                   typeof show === 'object' &&
+                   show.id && 
+                   show.name && 
+                   show.is_active !== false &&
+                   Array.isArray(liveShows) &&
+                   !liveShows.some(live => live && live.id === show.id);
+          } catch (e) {
+            console.warn('Error filtering show:', e);
+            return false;
+          }
+        })
+      : [];
+
+    // Safely filter live shows with null checks
+    validLiveShows = Array.isArray(liveShows) 
+      ? liveShows.filter(liveShow => {
+          try {
+            return liveShow && 
+                   typeof liveShow === 'object' &&
+                   liveShow.id && 
+                   liveShow.name;
+          } catch (e) {
+            console.warn('Error filtering live show:', e);
+            return false;
+          }
+        })
+      : [];
+  } catch (error) {
+    console.error('Error processing shows data:', error);
+    availableShows = [];
+    validLiveShows = [];
+  }
 
   if (loading) {
     return (
@@ -106,11 +133,28 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
                 <SelectValue placeholder="Select a show to go live" />
               </SelectTrigger>
               <SelectContent>
-                {availableShows.map((show) => (
-                  <SelectItem key={show.id} value={show.id}>
-                    {show.name}
+                {availableShows.length > 0 ? (
+                  availableShows.map((show) => {
+                    try {
+                      // Additional safety check for each show
+                      if (!show || !show.id || !show.name) {
+                        return null;
+                      }
+                      return (
+                        <SelectItem key={show.id} value={show.id}>
+                          {show.name}
+                        </SelectItem>
+                      );
+                    } catch (error) {
+                      console.warn('Error rendering show option:', error);
+                      return null;
+                    }
+                  }).filter(Boolean)
+                ) : (
+                  <SelectItem value="no-shows" disabled>
+                    No shows available
                   </SelectItem>
-                ))}
+                )}
               </SelectContent>
             </Select>
             <Button
@@ -134,53 +178,76 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
           <div className="space-y-4">
             <h3 className="font-semibold text-foreground">Currently Live</h3>
             <div className="space-y-3">
-              {validLiveShows.map((liveShow) => (
-                <div
-                  key={liveShow.id}
-                  className="p-4 rounded-lg bg-muted/30 border border-border/50"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {liveShow.image_url && (
-                        <img
-                          src={liveShow.image_url}
-                          alt={liveShow.name}
-                          className="w-12 h-12 rounded-lg object-cover"
-                          onError={(e) => {
-                            // Hide image if it fails to load
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      )}
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium text-foreground">
-                            {liveShow.name}
-                          </h4>
-                          <Badge variant="destructive" className="gap-1">
-                            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                            LIVE
-                          </Badge>
+              {validLiveShows.map((liveShow) => {
+                try {
+                  // Comprehensive safety checks
+                  if (!liveShow || typeof liveShow !== 'object' || !liveShow.id || !liveShow.name) {
+                    return null;
+                  }
+                  
+                  return (
+                    <div
+                      key={liveShow.id}
+                      className="p-4 rounded-lg bg-muted/30 border border-border/50"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {/* Safe image rendering with multiple fallbacks */}
+                          {(() => {
+                            try {
+                              return liveShow.image_url && typeof liveShow.image_url === 'string' ? (
+                                <img
+                                  src={liveShow.image_url}
+                                  alt={liveShow.name || 'Show image'}
+                                  className="w-12 h-12 rounded-lg object-cover"
+                                  onError={(e) => {
+                                    try {
+                                      e.currentTarget.style.display = 'none';
+                                    } catch (err) {
+                                      console.warn('Error hiding failed image:', err);
+                                    }
+                                  }}
+                                />
+                              ) : null;
+                            } catch (error) {
+                              console.warn('Error rendering show image:', error);
+                              return null;
+                            }
+                          })()}
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium text-foreground">
+                                {liveShow.name || 'Unknown Show'}
+                              </h4>
+                              <Badge variant="destructive" className="gap-1">
+                                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                                LIVE
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Clock size={12} />
+                              Broadcasting now
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Clock size={12} />
-                          Broadcasting now
-                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEndShow(liveShow.id)}
+                          disabled={ending === liveShow.id}
+                          className="gap-2"
+                        >
+                          <Square size={14} />
+                          {ending === liveShow.id ? "Ending..." : "End Show"}
+                        </Button>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEndShow(liveShow.id)}
-                      disabled={ending === liveShow.id}
-                      className="gap-2"
-                    >
-                      <Square size={14} />
-                      {ending === liveShow.id ? "Ending..." : "End Show"}
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                  );
+                } catch (error) {
+                  console.warn('Error rendering live show:', error);
+                  return null;
+                }
+              }).filter(Boolean)}
             </div>
           </div>
         )}

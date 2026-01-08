@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X, Radio, Headphones, LogIn, LogOut, LayoutDashboard } from "lucide-react";
+import { Menu, X, Radio, Headphones, LogIn, LogOut, LayoutDashboard, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,11 +11,13 @@ import LiveStatus from "./LiveStatus";
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDJOrAdmin, setIsDJOrAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { user, signOut } = useAuth();
 
   useEffect(() => {
     if (!user) {
       setIsDJOrAdmin(false);
+      setIsAdmin(false);
       return;
     }
 
@@ -23,10 +25,16 @@ const Header = () => {
       const { data } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id)
-        .in("role", ["dj", "admin"]);
+        .eq("user_id", user.id);
       
-      setIsDJOrAdmin(data && data.length > 0);
+      if (data && data.length > 0) {
+        const roles = data.map(r => r.role);
+        setIsDJOrAdmin(roles.some(role => ['dj', 'admin', 'presenter'].includes(role)));
+        setIsAdmin(roles.includes('admin'));
+      } else {
+        setIsDJOrAdmin(false);
+        setIsAdmin(false);
+      }
     };
 
     checkRole();
@@ -93,7 +101,15 @@ const Header = () => {
               <Link to="/dj">
                 <Button variant="outline" size="sm" className="gap-2">
                   <LayoutDashboard size={16} />
-                  Dashboard
+                  DJ Dashboard
+                </Button>
+              </Link>
+            )}
+            {isAdmin && (
+              <Link to="/admin">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Shield size={16} />
+                  Admin
                 </Button>
               </Link>
             )}
@@ -161,7 +177,15 @@ const Header = () => {
                 <Link to="/dj" onClick={() => setIsMenuOpen(false)}>
                   <Button variant="outline" className="w-full mt-2 gap-2">
                     <LayoutDashboard size={16} />
-                    Dashboard
+                    DJ Dashboard
+                  </Button>
+                </Link>
+              )}
+              {isAdmin && (
+                <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="outline" className="w-full mt-2 gap-2">
+                    <Shield size={16} />
+                    Admin Dashboard
                   </Button>
                 </Link>
               )}

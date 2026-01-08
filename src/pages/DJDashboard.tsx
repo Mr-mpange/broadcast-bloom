@@ -10,6 +10,7 @@ import LiveShowManager from "@/components/LiveShowManager";
 import BlogManagement from "@/components/BlogManagement";
 import LiveChat from "@/components/LiveChat";
 import LocalAudioPlayer from "@/components/LocalAudioPlayer";
+import BroadcastControlPanel from "@/components/BroadcastControlPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +26,7 @@ import {
   TrendingUp,
   MessageCircle,
   Headphones,
+  Mic,
 } from "lucide-react";
 
 const DJDashboard = () => {
@@ -140,6 +142,11 @@ const DJDashboard = () => {
           <h1 className="font-display text-3xl font-bold text-foreground">
             DJ Dashboard
           </h1>
+        </div>
+
+        {/* Broadcast Control Panel - Priority Component */}
+        <div className="mb-8">
+          <BroadcastControlPanel />
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -287,14 +294,32 @@ const DJDashboard = () => {
 
         {/* Tabbed Content */}
         <div className="mt-6">
-          <Tabs defaultValue="shows" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+          <Tabs defaultValue="broadcast" className="w-full">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="broadcast">Broadcast Control</TabsTrigger>
               <TabsTrigger value="shows">Show Management</TabsTrigger>
               <TabsTrigger value="audio">Local Audio</TabsTrigger>
               <TabsTrigger value="chat">Live Chat</TabsTrigger>
               {canManageBlogs && <TabsTrigger value="blogs">Blog Management</TabsTrigger>}
             </TabsList>
             
+            <TabsContent value="broadcast" className="mt-6">
+              <div className="grid gap-6">
+                <Card className="glass-panel border-border/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Mic className="h-5 w-5 text-primary" />
+                      Professional Broadcasting Controls
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Full control panel for live broadcasting with role-based permissions, microphone control, and emergency override capabilities
+                    </p>
+                  </CardHeader>
+                </Card>
+                
+                <BroadcastControlPanel />
+              </div>
+            </TabsContent>
             <TabsContent value="shows" className="mt-6">
               {profile && (
                 <ShowManagement 

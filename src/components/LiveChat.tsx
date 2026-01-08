@@ -8,7 +8,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Send, MessageCircle, Users, Reply } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
 
 interface ChatMessage {
   id: string;
@@ -26,6 +25,7 @@ interface LiveChatProps {
 }
 
 const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
+  // Note: showId parameter reserved for future show-specific chat rooms
   const { user } = useAuth();
   const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -42,7 +42,7 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
     
     let storedSessionId = localStorage.getItem('pulse_fm_chat_session');
     if (!storedSessionId) {
-      storedSessionId = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      storedSessionId = `anon_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       localStorage.setItem('pulse_fm_chat_session', storedSessionId);
     }
     return storedSessionId;
@@ -140,20 +140,36 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
         })
         .subscribe();
 
-      // Announce user joined
-      channel.send({
-        type: 'broadcast',
-        event: 'user_joined',
-        payload: { username: getUsername() }
-      });
+      // Announce user joined (async operation)
+      const announceJoin = async () => {
+        try {
+          await channel.send({
+            type: 'broadcast',
+            event: 'user_joined',
+            payload: { username: getUsername() }
+          });
+        } catch (error) {
+          console.log('Failed to announce user join:', error);
+        }
+      };
+      
+      announceJoin();
 
       return () => {
-        // Announce user left
-        channel.send({
-          type: 'broadcast',
-          event: 'user_left',
-          payload: { username: getUsername() }
-        });
+        // Announce user left (async operation)
+        const announceLeave = async () => {
+          try {
+            await channel.send({
+              type: 'broadcast',
+              event: 'user_left',
+              payload: { username: getUsername() }
+            });
+          } catch (error) {
+            console.log('Failed to announce user leave:', error);
+          }
+        };
+        
+        announceLeave();
         supabase.removeChannel(channel);
       };
     } catch (error) {
@@ -228,7 +244,7 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
     
     try {
       const messageData: ChatMessage = {
-        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         username: getUsername(),
         message: newMessage.trim(),
         created_at: new Date().toISOString(),

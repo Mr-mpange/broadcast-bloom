@@ -9,6 +9,7 @@ import OfflineIndicator from "@/components/OfflineIndicator";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import DJDashboard from "./pages/DJDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import ShowDetail from "./pages/ShowDetail";
 import Shows from "./pages/Shows";
 import Favorites from "./pages/Favorites";
@@ -29,6 +30,10 @@ const router = createBrowserRouter([
   {
     path: "/dj",
     element: <DJDashboard />,
+  },
+  {
+    path: "/admin",
+    element: <AdminDashboard />,
   },
   {
     path: "/shows",
@@ -52,7 +57,6 @@ const router = createBrowserRouter([
   },
 ], {
   future: {
-    v7_startTransition: true,
     v7_relativeSplatPath: true,
   },
 });

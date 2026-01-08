@@ -1,111 +1,100 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
-import { useGeolocation } from "./useGeolocation";
+import { useGeolocationListeners } from "./useGeolocationListeners";
 
 export const useListenerTracking = (liveShowId?: string) => {
   const { user } = useAuth();
-  const { country } = useGeolocation();
+  const {
+    listenerStats,
+    currentSession,
+    startListenerSession,
+    endListenerSession,
+    updateListenerActivity,
+    trackInteraction,
+    isListening: isGeoListening,
+    userLocation
+  } = useGeolocationListeners();
+  
   const [listenerCount, setListenerCount] = useState(0);
   const [isListening, setIsListening] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const sessionRef = useRef<string | null>(null);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Generate session ID for anonymous users
-  const getSessionId = () => {
-    if (user) return user.id; // Use user ID for authenticated users
-    
-    let storedSessionId = localStorage.getItem('pulse_fm_session_id');
-    if (!storedSessionId) {
-      storedSessionId = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('pulse_fm_session_id', storedSessionId);
+  // Update listener count from geolocation stats
+  useEffect(() => {
+    setListenerCount(listenerStats.total_listeners);
+  }, [listenerStats.total_listeners]);
+
+  // Sync with geolocation listening state
+  useEffect(() => {
+    setIsListening(isGeoListening);
+    if (currentSession) {
+      setSessionId(currentSession.id);
+      sessionRef.current = currentSession.id;
+    } else {
+      setSessionId(null);
+      sessionRef.current = null;
     }
-    return storedSessionId;
-  };
+  }, [isGeoListening, currentSession]);
 
-  // Simulate listener count (since we don't have the RPC functions)
-  const fetchListenerCount = async () => {
-    if (!liveShowId) return;
-
-    try {
-      // Simulate a listener count between 5-50
-      const simulatedCount = Math.floor(Math.random() * 45) + 5;
-      setListenerCount(simulatedCount);
-    } catch (err) {
-      console.error('Error fetching listener count:', err);
-    }
-  };
-
-  // Start listening session (simplified)
+  // Start listening session using geolocation system
   const startListening = async () => {
-    if (!liveShowId || isListening) return;
+    if (isListening) return;
 
     try {
-      const sessionIdToUse = getSessionId();
+      const sessionUuid = await startListenerSession();
       
-      // Create a listener stat record instead of using RPC
-      const { data, error } = await supabase
-        .from('listener_stats')
-        .insert({
-          show_id: liveShowId,
-          country: country || 'Unknown', // Use real country from geolocation
-        })
-        .select()
-        .single();
-
-      if (!error && data) {
-        setSessionId(data.id);
-        sessionRef.current = data.id;
-        setIsListening(true);
+      if (sessionUuid) {
+        // Also create a show-specific listener record if we have a live show
+        if (liveShowId) {
+          await supabase
+            .from('listener_stats')
+            .insert({
+              show_id: liveShowId,
+              country: userLocation?.country || 'Unknown',
+              listener_count: 1,
+              recorded_at: new Date().toISOString()
+            });
+        }
         
-        // Start heartbeat to keep session alive
+        // Start heartbeat for activity tracking
         startHeartbeat();
-        
-        // Update listener count
-        fetchListenerCount();
       }
     } catch (err) {
       console.error('Error starting listener session:', err);
-      // Even if database insert fails, allow local listening
-      setIsListening(true);
-      fetchListenerCount();
     }
   };
 
-  // End listening session (simplified)
+  // End listening session using geolocation system
   const stopListening = async () => {
     if (!isListening) return;
 
     try {
-      setIsListening(false);
-      setSessionId(null);
-      sessionRef.current = null;
+      await endListenerSession();
       
       // Stop heartbeat
       if (heartbeatRef.current) {
         clearInterval(heartbeatRef.current);
         heartbeatRef.current = null;
       }
-      
-      // Update listener count
-      fetchListenerCount();
     } catch (err) {
       console.error('Error ending listener session:', err);
     }
   };
 
-  // Heartbeat to keep session alive
+  // Heartbeat to keep session alive and track activity
   const startHeartbeat = () => {
     if (heartbeatRef.current) {
       clearInterval(heartbeatRef.current);
     }
 
     heartbeatRef.current = setInterval(async () => {
-      if (sessionRef.current && liveShowId) {
+      if (sessionRef.current && isListening) {
         try {
-          // Update listener count periodically
-          fetchListenerCount();
+          // Update activity in geolocation system
+          await updateListenerActivity();
         } catch (err) {
           console.error('Heartbeat error:', err);
         }
@@ -113,13 +102,18 @@ export const useListenerTracking = (liveShowId?: string) => {
     }, 30 * 1000); // Every 30 seconds
   };
 
-  // Subscribe to listener count changes
+  // Track user interactions
+  const recordInteraction = async (interactionType: string = 'general') => {
+    if (isListening) {
+      await trackInteraction(interactionType);
+    }
+  };
+
+  // Subscribe to listener count changes from geolocation system
   useEffect(() => {
     if (!liveShowId) return;
 
-    fetchListenerCount();
-
-    // Subscribe to listener stats changes (simplified)
+    // Subscribe to listener stats changes
     const channel = supabase
       .channel(`listener_count_${liveShowId}`)
       .on(
@@ -127,11 +121,11 @@ export const useListenerTracking = (liveShowId?: string) => {
         {
           event: '*',
           schema: 'public',
-          table: 'listener_stats',
+          table: 'listener_sessions',
         },
         () => {
-          // Update count when stats change
-          setTimeout(fetchListenerCount, 500);
+          // Listener sessions changed, stats will be updated automatically
+          // by the geolocation system
         }
       )
       .subscribe();
@@ -154,8 +148,15 @@ export const useListenerTracking = (liveShowId?: string) => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && isListening) {
-        // Page is hidden, end session
-        stopListening();
+        // Page is hidden, but don't end session immediately
+        // The geolocation system will handle session timeout
+        if (heartbeatRef.current) {
+          clearInterval(heartbeatRef.current);
+          heartbeatRef.current = null;
+        }
+      } else if (!document.hidden && isListening) {
+        // Page is visible again, resume heartbeat
+        startHeartbeat();
       }
     };
 
@@ -171,6 +172,12 @@ export const useListenerTracking = (liveShowId?: string) => {
     isListening,
     startListening,
     stopListening,
-    refreshCount: fetchListenerCount
+    recordInteraction,
+    refreshCount: () => {}, // No longer needed, stats auto-refresh
+    
+    // Additional geolocation-based data
+    userLocation,
+    listenerStats,
+    currentSession
   };
 };
