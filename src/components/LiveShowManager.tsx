@@ -11,7 +11,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useLiveShows } from "@/hooks/useLiveShows";
 import { Radio, Play, Square, Clock } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
 
 interface Show {
   id: string;
@@ -47,9 +46,27 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
     setEnding(null);
   };
 
-  const availableShows = shows.filter(show => 
-    show.is_active && !liveShows.some(live => live.show_id === show.id)
-  );
+  const availableShows = shows?.filter(show => 
+    show?.is_active && !liveShows.some(live => live?.id === show?.id)
+  ) || [];
+
+  if (loading) {
+    return (
+      <Card className="glass-panel border-border/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <Radio className="h-5 w-5 text-primary" />
+            Live Show Manager
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center py-8">
+          <div className="text-center text-muted-foreground">
+            Loading shows...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="glass-panel border-border/50">
@@ -69,7 +86,7 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
                 <SelectValue placeholder="Select a show to go live" />
               </SelectTrigger>
               <SelectContent>
-                {availableShows.map((show) => (
+                {availableShows.filter(show => show && show.id && show.name).map((show) => (
                   <SelectItem key={show.id} value={show.id}>
                     {show.name}
                   </SelectItem>
@@ -97,24 +114,24 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
           <div className="space-y-4">
             <h3 className="font-semibold text-foreground">Currently Live</h3>
             <div className="space-y-3">
-              {liveShows.map((liveShow) => (
+              {liveShows.filter(liveShow => liveShow && liveShow.id).map((liveShow) => (
                 <div
                   key={liveShow.id}
                   className="p-4 rounded-lg bg-muted/30 border border-border/50"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      {liveShow.shows.image_url && (
+                      {liveShow?.image_url && (
                         <img
-                          src={liveShow.shows.image_url}
-                          alt={liveShow.shows.name}
+                          src={liveShow.image_url}
+                          alt={liveShow.name || 'Live Show'}
                           className="w-12 h-12 rounded-lg object-cover"
                         />
                       )}
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-medium text-foreground">
-                            {liveShow.shows.name}
+                            {liveShow?.name || 'Unknown Show'}
                           </h4>
                           <Badge variant="destructive" className="gap-1">
                             <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
@@ -123,7 +140,7 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
                         </div>
                         <p className="text-sm text-muted-foreground flex items-center gap-1">
                           <Clock size={12} />
-                          Started {formatDistanceToNow(new Date(liveShow.started_at), { addSuffix: true })}
+                          Started recently
                         </p>
                       </div>
                     </div>

@@ -24,20 +24,35 @@ export const useLiveShows = () => {
 
   const fetchLiveShows = async () => {
     setLoading(true);
-    // Since there's no live_shows table, we'll fetch shows and simulate live status
-    const { data, error } = await supabase
-      .from('shows')
-      .select('*')
-      .limit(5); // Get some shows as placeholders
+    try {
+      // Since there's no live_shows table, we'll fetch shows and simulate live status
+      const { data, error } = await supabase
+        .from('shows')
+        .select('*')
+        .limit(5); // Get some shows as placeholders
 
-    if (!error && data) {
-      // Simulate some shows being live
-      const liveShows = data.map((show, index) => ({
-        ...show,
-        is_live: index < 2 // First 2 shows are "live"
-      })).filter(show => show.is_live);
-      
-      setLiveShows(liveShows);
+      if (!error && data) {
+        // Simulate some shows being live and ensure all required properties exist
+        const liveShows = data
+          .map((show, index) => ({
+            id: show.id || `show_${index}`,
+            name: show.name || `Show ${index + 1}`,
+            image_url: show.image_url || null,
+            description: show.description || null,
+            genre: show.genre || null,
+            host_id: show.host_id || 'unknown',
+            is_live: index < 2 // First 2 shows are "live"
+          }))
+          .filter(show => show.is_live && show.id && show.name); // Only valid live shows
+        
+        setLiveShows(liveShows);
+      } else {
+        // Fallback to empty array if there's an error
+        setLiveShows([]);
+      }
+    } catch (error) {
+      console.error('Error fetching live shows:', error);
+      setLiveShows([]);
     }
     setLoading(false);
   };
@@ -67,21 +82,41 @@ export const useLiveShows = () => {
     try {
       // Simulate starting a live show
       // In a real app, you'd update a live_status field or create a live_shows record
-      toast({
-        title: "Show is now live!",
-        description: "Listeners will be notified about your live broadcast."
-      });
+      
+      // Find the show to start
+      const { data: showData } = await supabase
+        .from('shows')
+        .select('*')
+        .eq('id', showId)
+        .single();
 
-      // Update local state to show as live
-      setLiveShows(prev => {
-        const show = prev.find(s => s.id === showId);
-        if (show) {
-          return [{ ...show, is_live: true }, ...prev.filter(s => s.id !== showId)];
-        }
-        return prev;
-      });
+      if (showData) {
+        const newLiveShow = {
+          id: showData.id,
+          name: showData.name || 'Unknown Show',
+          image_url: showData.image_url || null,
+          description: showData.description || null,
+          genre: showData.genre || null,
+          host_id: showData.host_id || 'unknown',
+          is_live: true
+        };
 
-      return { data: showId };
+        // Update local state to show as live
+        setLiveShows(prev => {
+          // Remove if already exists, then add to beginning
+          const filtered = prev.filter(s => s.id !== showId);
+          return [newLiveShow, ...filtered];
+        });
+
+        toast({
+          title: "Show is now live!",
+          description: "Listeners will be notified about your live broadcast."
+        });
+
+        return { data: showId };
+      } else {
+        throw new Error('Show not found');
+      }
     } catch (err: any) {
       console.error('Unexpected error starting live show:', err);
       toast({

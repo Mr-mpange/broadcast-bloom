@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
+import { useGeolocation } from "./useGeolocation";
 
 export const useListenerTracking = (liveShowId?: string) => {
   const { user } = useAuth();
+  const { country } = useGeolocation();
   const [listenerCount, setListenerCount] = useState(0);
   const [isListening, setIsListening] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -47,7 +49,7 @@ export const useListenerTracking = (liveShowId?: string) => {
         .from('listener_stats')
         .insert({
           show_id: liveShowId,
-          country: 'Unknown', // You could get this from an IP geolocation service
+          country: country || 'Unknown', // Use real country from geolocation
         })
         .select()
         .single();
