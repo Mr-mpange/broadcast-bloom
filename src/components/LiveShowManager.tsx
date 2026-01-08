@@ -35,20 +35,40 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
     if (!selectedShowId) return;
 
     setStarting(true);
-    await startLiveShow(selectedShowId);
+    try {
+      await startLiveShow(selectedShowId);
+    } catch (error) {
+      console.error('Error starting show:', error);
+    }
     setStarting(false);
     setSelectedShowId("");
   };
 
   const handleEndShow = async (liveShowId: string) => {
     setEnding(liveShowId);
-    await endLiveShow(liveShowId);
+    try {
+      await endLiveShow(liveShowId);
+    } catch (error) {
+      console.error('Error ending show:', error);
+    }
     setEnding(null);
   };
 
-  const availableShows = shows?.filter(show => 
-    show?.is_active && !liveShows.some(live => live?.id === show?.id)
-  ) || [];
+  // Safely filter available shows with null checks
+  const availableShows = (shows || []).filter(show => 
+    show && 
+    show.id && 
+    show.name && 
+    show.is_active && 
+    !liveShows.some(live => live && live.id === show.id)
+  );
+
+  // Safely filter live shows with null checks
+  const validLiveShows = (liveShows || []).filter(liveShow => 
+    liveShow && 
+    liveShow.id && 
+    liveShow.name
+  );
 
   if (loading) {
     return (
@@ -86,7 +106,7 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
                 <SelectValue placeholder="Select a show to go live" />
               </SelectTrigger>
               <SelectContent>
-                {availableShows.filter(show => show && show.id && show.name).map((show) => (
+                {availableShows.map((show) => (
                   <SelectItem key={show.id} value={show.id}>
                     {show.name}
                   </SelectItem>
@@ -110,28 +130,32 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
         </div>
 
         {/* Currently Live Shows */}
-        {liveShows.length > 0 && (
+        {validLiveShows.length > 0 && (
           <div className="space-y-4">
             <h3 className="font-semibold text-foreground">Currently Live</h3>
             <div className="space-y-3">
-              {liveShows.filter(liveShow => liveShow && liveShow.id).map((liveShow) => (
+              {validLiveShows.map((liveShow) => (
                 <div
                   key={liveShow.id}
                   className="p-4 rounded-lg bg-muted/30 border border-border/50"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      {liveShow?.image_url && (
+                      {liveShow.image_url && (
                         <img
                           src={liveShow.image_url}
-                          alt={liveShow.name || 'Live Show'}
+                          alt={liveShow.name}
                           className="w-12 h-12 rounded-lg object-cover"
+                          onError={(e) => {
+                            // Hide image if it fails to load
+                            e.currentTarget.style.display = 'none';
+                          }}
                         />
                       )}
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-medium text-foreground">
-                            {liveShow?.name || 'Unknown Show'}
+                            {liveShow.name}
                           </h4>
                           <Badge variant="destructive" className="gap-1">
                             <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
@@ -140,7 +164,7 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
                         </div>
                         <p className="text-sm text-muted-foreground flex items-center gap-1">
                           <Clock size={12} />
-                          Started recently
+                          Broadcasting now
                         </p>
                       </div>
                     </div>
@@ -161,7 +185,7 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
           </div>
         )}
 
-        {liveShows.length === 0 && !loading && (
+        {validLiveShows.length === 0 && !loading && (
           <div className="text-center py-8 text-muted-foreground">
             <Radio className="mx-auto h-12 w-12 mb-4 opacity-50" />
             <p>No shows are currently live</p>

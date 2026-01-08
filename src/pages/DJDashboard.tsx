@@ -9,6 +9,7 @@ import ShowManagement from "@/components/ShowManagement";
 import LiveShowManager from "@/components/LiveShowManager";
 import BlogManagement from "@/components/BlogManagement";
 import LiveChat from "@/components/LiveChat";
+import LocalAudioPlayer from "@/components/LocalAudioPlayer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,8 +23,8 @@ import {
   Globe,
   Play,
   TrendingUp,
-  FileText,
   MessageCircle,
+  Headphones,
 } from "lucide-react";
 
 const DJDashboard = () => {
@@ -287,8 +288,9 @@ const DJDashboard = () => {
         {/* Tabbed Content */}
         <div className="mt-6">
           <Tabs defaultValue="shows" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="shows">Show Management</TabsTrigger>
+              <TabsTrigger value="audio">Local Audio</TabsTrigger>
               <TabsTrigger value="chat">Live Chat</TabsTrigger>
               {canManageBlogs && <TabsTrigger value="blogs">Blog Management</TabsTrigger>}
             </TabsList>
@@ -301,6 +303,24 @@ const DJDashboard = () => {
                   onShowsChange={refetchShows} 
                 />
               )}
+            </TabsContent>
+
+            <TabsContent value="audio" className="mt-6">
+              <div className="grid gap-6">
+                <Card className="glass-panel border-border/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Headphones className="h-5 w-5 text-primary" />
+                      Play Audio from Your PC
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Upload and play audio files directly from your computer for live broadcasting
+                    </p>
+                  </CardHeader>
+                </Card>
+                
+                <LocalAudioPlayer />
+              </div>
             </TabsContent>
 
             <TabsContent value="chat" className="mt-6">
