@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useDJData } from "@/hooks/useDJData";
 import { useNowPlaying } from "@/hooks/useNowPlaying";
+import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import ShowManagement from "@/components/ShowManagement";
 import LiveShowManager from "@/components/LiveShowManager";
 import BlogManagement from "@/components/BlogManagement";
+import LiveChat from "@/components/LiveChat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +23,7 @@ import {
   Play,
   TrendingUp,
   FileText,
+  MessageCircle,
 } from "lucide-react";
 
 const DJDashboard = () => {
@@ -54,7 +57,7 @@ const DJDashboard = () => {
   }, [loading, isDJ, user, navigate, toast]);
 
   useEffect(() => {
-    // Check if user can manage blogs (admin or presenter)
+    // Check if user can manage blogs (admin or moderator)
     const checkBlogPermissions = async () => {
       if (!user) return;
       
@@ -62,7 +65,7 @@ const DJDashboard = () => {
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
-        .in("role", ["admin", "presenter"]);
+        .in("role", ["admin", "moderator"]);
       
       setCanManageBlogs(data && data.length > 0);
     };
@@ -284,8 +287,9 @@ const DJDashboard = () => {
         {/* Tabbed Content */}
         <div className="mt-6">
           <Tabs defaultValue="shows" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="shows">Show Management</TabsTrigger>
+              <TabsTrigger value="chat">Live Chat</TabsTrigger>
               {canManageBlogs && <TabsTrigger value="blogs">Blog Management</TabsTrigger>}
             </TabsList>
             
@@ -297,6 +301,26 @@ const DJDashboard = () => {
                   onShowsChange={refetchShows} 
                 />
               )}
+            </TabsContent>
+
+            <TabsContent value="chat" className="mt-6">
+              <div className="grid gap-6">
+                <Card className="glass-panel border-border/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MessageCircle className="h-5 w-5 text-primary" />
+                      Interact with Your Listeners
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Chat with your audience in real-time during your live broadcast
+                    </p>
+                  </CardHeader>
+                </Card>
+                
+                <div className="h-[600px]">
+                  <LiveChat className="h-full" />
+                </div>
+              </div>
             </TabsContent>
             
             {canManageBlogs && (

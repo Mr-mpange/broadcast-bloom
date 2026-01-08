@@ -25,7 +25,7 @@ export const useDJData = () => {
   const { user } = useAuth();
   const [shows, setShows] = useState<Show[]>([]);
   const [listenerStats, setListenerStats] = useState<ListenerStat[]>([]);
-  const [profile, setProfile] = useState<{ id: string } | null>(null);
+  const [profile, setProfile] = useState<{ id: string; role?: string } | null>(null);
   const [isDJ, setIsDJ] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -59,7 +59,9 @@ export const useDJData = () => {
           .eq("user_id", user.id)
           .maybeSingle();
 
-        setProfile(profileData);
+        // Add role to profile if available
+        const userRole = roleData && roleData.length > 0 ? roleData[0].role : null;
+        setProfile(profileData ? { ...profileData, role: userRole } : null);
 
         // Fetch shows
         const { data: showsData } = await supabase

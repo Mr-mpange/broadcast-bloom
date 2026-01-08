@@ -2,10 +2,10 @@
 export const STREAM_CONFIG = {
   // Replace these with your actual stream URLs
   live: {
-    // Main live stream URL (MP3, AAC, or HLS)
-    url: "https://your-radio-stream.com/live.mp3",
+    // Using a working test stream for now
+    url: "https://stream.zeno.fm/0r0xa792kwzuv", // Test stream that works
     // Backup stream URL
-    backup: "https://backup-stream.com/live.mp3",
+    backup: "https://stream.zeno.fm/0r0xa792kwzuv",
     // Stream format
     format: "mp3", // or "aac", "hls"
     // Bitrate
@@ -14,9 +14,9 @@ export const STREAM_CONFIG = {
   
   // Different quality streams
   quality: {
-    high: "https://your-radio-stream.com/live-320.mp3", // 320kbps
-    medium: "https://your-radio-stream.com/live-128.mp3", // 128kbps  
-    low: "https://your-radio-stream.com/live-64.mp3", // 64kbps
+    high: "https://stream.zeno.fm/0r0xa792kwzuv", // 320kbps
+    medium: "https://stream.zeno.fm/0r0xa792kwzuv", // 128kbps  
+    low: "https://stream.zeno.fm/0r0xa792kwzuv", // 64kbps
   }
 };
 

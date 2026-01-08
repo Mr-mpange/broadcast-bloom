@@ -69,7 +69,7 @@
       "url": "/?action=listen",
       "icons": [
         {
-          "src": "/icons/play-icon.png",
+          "src": "/icons/icon-96x96.svg",
           "sizes": "96x96"
         }
       ]
@@ -81,7 +81,7 @@
       "url": "/shows",
       "icons": [
         {
-          "src": "/icons/shows-icon.png",
+          "src": "/icons/icon-96x96.svg",
           "sizes": "96x96"
         }
       ]
@@ -93,26 +93,10 @@
       "url": "/#schedule",
       "icons": [
         {
-          "src": "/icons/schedule-icon.png",
+          "src": "/icons/icon-96x96.svg",
           "sizes": "96x96"
         }
       ]
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshots/desktop-home.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "PULSE FM Home Screen"
-    },
-    {
-      "src": "/screenshots/mobile-player.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Mobile Live Player"
     }
   ]
 }

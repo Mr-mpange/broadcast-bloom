@@ -142,14 +142,21 @@ const LivePlayer = () => {
   const checkIfFavorited = async () => {
     if (!user || liveShows.length === 0) return;
 
-    const { data } = await supabase
-      .from('favorites')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('show_id', liveShows[0].id) // Use show id directly
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('favorites')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('show_id', liveShows[0].id) // Use show id directly
+        .maybeSingle(); // Use maybeSingle instead of single
 
-    setIsFavorited(!!data);
+      if (!error) {
+        setIsFavorited(!!data);
+      }
+    } catch (err) {
+      console.log('Error checking favorites:', err);
+      // Silently fail - not critical functionality
+    }
   };
 
   const toggleFavorite = async () => {
@@ -166,29 +173,42 @@ const LivePlayer = () => {
 
     const showId = liveShows[0].id; // Use show id directly
 
-    if (isFavorited) {
-      const { error } = await supabase
-        .from('favorites')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('show_id', showId);
+    try {
+      if (isFavorited) {
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('show_id', showId);
 
-      if (!error) {
-        setIsFavorited(false);
-        toast({ title: "Removed from favorites" });
-      }
-    } else {
-      const { error } = await supabase
-        .from('favorites')
-        .insert({
-          user_id: user.id,
-          show_id: showId
-        });
+        if (!error) {
+          setIsFavorited(false);
+          toast({ title: "Removed from favorites" });
+        } else {
+          console.log('Error removing favorite:', error);
+        }
+      } else {
+        const { error } = await supabase
+          .from('favorites')
+          .insert({
+            user_id: user.id,
+            show_id: showId
+          });
 
-      if (!error) {
-        setIsFavorited(true);
-        toast({ title: "Added to favorites!" });
+        if (!error) {
+          setIsFavorited(true);
+          toast({ title: "Added to favorites!" });
+        } else {
+          console.log('Error adding favorite:', error);
+        }
       }
+    } catch (err) {
+      console.log('Error toggling favorite:', err);
+      toast({
+        title: "Error",
+        description: "Unable to update favorites. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
