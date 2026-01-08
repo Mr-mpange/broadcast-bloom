@@ -171,8 +171,20 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
   const subscribeToPresence = () => {
     if (!chatRoom) return;
 
-    const userId = user?.id || `anonymous_${Math.random().toString(36).substr(2, 9)}`;
-    const username = user?.user_metadata?.display_name || 'Anonymous Listener';
+    // Use consistent session ID for anonymous users
+    const getSessionId = () => {
+      if (user) return user.id;
+      
+      let storedSessionId = localStorage.getItem('pulse_fm_session_id');
+      if (!storedSessionId) {
+        storedSessionId = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem('pulse_fm_session_id', storedSessionId);
+      }
+      return storedSessionId;
+    };
+
+    const userId = getSessionId();
+    const username = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Anonymous Listener';
 
     const channel = supabase
       .channel(`presence_${chatRoom.id}`, {

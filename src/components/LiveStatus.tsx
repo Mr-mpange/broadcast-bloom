@@ -6,12 +6,9 @@ import { useListenerTracking } from "@/hooks/useListenerTracking";
 
 interface LiveShow {
   id: string;
-  show_id: string;
-  is_live: boolean;
-  shows: {
-    name: string;
-    genre: string | null;
-  };
+  name: string;
+  genre: string | null;
+  is_live?: boolean;
 }
 
 const LiveStatus = () => {
@@ -25,32 +22,28 @@ const LiveStatus = () => {
   }, []);
 
   const fetchLiveShows = async () => {
+    // Since there's no live_shows table, we'll fetch shows and simulate live status
     const { data } = await supabase
-      .from('live_shows')
-      .select(`
-        *,
-        shows (
-          name,
-          genre
-        )
-      `)
-      .eq('is_live', true)
-      .order('started_at', { ascending: false });
+      .from('shows')
+      .select('id, name, genre')
+      .limit(1); // Get first show as placeholder
 
-    if (data) {
-      setLiveShows(data);
+    if (data && data.length > 0) {
+      // Simulate the first show being live
+      const liveShows = data.map(show => ({ ...show, is_live: true }));
+      setLiveShows(liveShows);
     }
   };
 
   const subscribeToLiveShows = () => {
     const channel = supabase
-      .channel('live_shows_status')
+      .channel('shows_status')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'live_shows'
+          table: 'shows'
         },
         () => {
           fetchLiveShows();
@@ -83,11 +76,11 @@ const LiveStatus = () => {
         <span>{listenerCount}</span>
       </div>
       <span className="text-sm font-medium text-foreground">
-        {liveShows[0].shows.name}
+        {liveShows[0].name}
       </span>
-      {liveShows[0].shows.genre && (
+      {liveShows[0].genre && (
         <Badge variant="secondary" className="text-xs">
-          {liveShows[0].shows.genre}
+          {liveShows[0].genre}
         </Badge>
       )}
     </div>

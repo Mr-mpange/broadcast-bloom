@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useListenerTracking } from "@/hooks/useListenerTracking";
+import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Play, 
@@ -13,24 +14,21 @@ import {
   Heart, 
   Share2,
   Radio,
-  Users
+  Users,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface LiveShow {
   id: string;
-  show_id: string;
-  started_at: string;
-  is_live: boolean;
-  shows: {
-    name: string;
-    description: string | null;
-    genre: string | null;
-    image_url: string | null;
-    host: {
-      display_name: string | null;
-    } | null;
-  };
+  name: string;
+  description: string | null;
+  genre: string | null;
+  image_url: string | null;
+  host_id: string;
+  host: {
+    display_name: string | null;
+  } | null;
 }
 
 interface NowPlaying {
@@ -42,15 +40,24 @@ interface NowPlaying {
 const LivePlayer = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(75);
   const [liveShows, setLiveShows] = useState<LiveShow[]>([]);
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
   const [isFavorited, setIsFavorited] = useState(false);
   
   const currentLiveShow = liveShows.length > 0 ? liveShows[0] : null;
   const { listenerCount, isListening, startListening, stopListening } = useListenerTracking(currentLiveShow?.id);
+  
+  // Audio player hook with stream configuration
+  const { 
+    isPlaying, 
+    isLoading, 
+    volume, 
+    isMuted, 
+    error,
+    togglePlay: audioTogglePlay, 
+    toggleMute: audioToggleMute, 
+    setVolume: setAudioVolume 
+  } = useAudioPlayer({ quality: 'medium' }); // You can make this configurable
 
   useEffect(() => {
     fetchLiveShows();
@@ -65,23 +72,17 @@ const LivePlayer = () => {
   }, [user, liveShows]);
 
   const fetchLiveShows = async () => {
+    // Since there's no live_shows table, we'll fetch shows and simulate live status
+    // In a real app, you'd have a way to track which shows are currently live
     const { data } = await supabase
-      .from('live_shows')
+      .from('shows')
       .select(`
         *,
-        shows (
-          name,
-          description,
-          genre,
-          image_url,
-          host:profiles!shows_host_id_fkey (
-            display_name
-          )
+        host:profiles!shows_host_id_fkey (
+          display_name
         )
       `)
-      .eq('is_live', true)
-      .order('started_at', { ascending: false })
-      .limit(1);
+      .limit(1); // Get the first show as a placeholder
 
     if (data && data.length > 0) {
       setLiveShows(data);
@@ -101,14 +102,15 @@ const LivePlayer = () => {
   };
 
   const subscribeToUpdates = () => {
-    const liveShowsChannel = supabase
-      .channel('live_shows_updates')
+    // Subscribe to shows table changes
+    const showsChannel = supabase
+      .channel('shows_updates')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'live_shows'
+          table: 'shows'
         },
         () => {
           fetchLiveShows();
@@ -132,7 +134,7 @@ const LivePlayer = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(liveShowsChannel);
+      supabase.removeChannel(showsChannel);
       supabase.removeChannel(nowPlayingChannel);
     };
   };
@@ -144,7 +146,7 @@ const LivePlayer = () => {
       .from('favorites')
       .select('id')
       .eq('user_id', user.id)
-      .eq('show_id', liveShows[0].show_id)
+      .eq('show_id', liveShows[0].id) // Use show id directly
       .single();
 
     setIsFavorited(!!data);
@@ -162,7 +164,7 @@ const LivePlayer = () => {
 
     if (liveShows.length === 0) return;
 
-    const showId = liveShows[0].show_id;
+    const showId = liveShows[0].id; // Use show id directly
 
     if (isFavorited) {
       const { error } = await supabase
@@ -200,10 +202,10 @@ const LivePlayer = () => {
       return;
     }
 
-    const newPlayingState = !isPlaying;
-    setIsPlaying(newPlayingState);
+    // Toggle audio playback
+    audioTogglePlay();
     
-    if (newPlayingState) {
+    if (!isPlaying) {
       // Start listening session
       await startListening();
       toast({
@@ -218,17 +220,15 @@ const LivePlayer = () => {
         description: "Audio stream paused"
       });
     }
-    
-    // Here you would integrate with your actual audio streaming service
   };
 
   const toggleMute = () => {
-    setIsMuted(!isMuted);
+    audioToggleMute();
   };
 
   const shareStream = async () => {
     const shareData = {
-      title: liveShows.length > 0 ? `${liveShows[0].shows.name} - Live on PULSE FM` : 'PULSE FM Live Stream',
+      title: liveShows.length > 0 ? `${liveShows[0].name} - Live on PULSE FM` : 'PULSE FM Live Stream',
       text: 'Listen to live radio on PULSE FM!',
       url: window.location.origin
     };
@@ -269,25 +269,25 @@ const LivePlayer = () => {
         {/* Current Show Info */}
         {currentShow ? (
           <div className="flex items-start gap-3">
-            {currentShow.shows.image_url && (
+            {currentShow.image_url && (
               <img
-                src={currentShow.shows.image_url}
-                alt={currentShow.shows.name}
+                src={currentShow.image_url}
+                alt={currentShow.name}
                 className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
               />
             )}
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-foreground truncate">
-                {currentShow.shows.name}
+                {currentShow.name}
               </h3>
-              {currentShow.shows.host?.display_name && (
+              {currentShow.host?.display_name && (
                 <p className="text-sm text-muted-foreground">
-                  with {currentShow.shows.host.display_name}
+                  with {currentShow.host.display_name}
                 </p>
               )}
-              {currentShow.shows.genre && (
+              {currentShow.genre && (
                 <Badge variant="secondary" className="text-xs mt-1">
-                  {currentShow.shows.genre}
+                  {currentShow.genre}
                 </Badge>
               )}
             </div>
@@ -321,8 +321,15 @@ const LivePlayer = () => {
               variant={isPlaying ? "default" : "outline"}
               onClick={togglePlay}
               className="h-10 w-10"
+              disabled={isLoading}
             >
-              {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+              {isLoading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : isPlaying ? (
+                <Pause size={18} />
+              ) : (
+                <Play size={18} />
+              )}
             </Button>
             <Button
               size="icon"
@@ -365,12 +372,19 @@ const LivePlayer = () => {
             type="range"
             min="0"
             max="100"
-            value={isMuted ? 0 : volume}
-            onChange={(e) => setVolume(parseInt(e.target.value))}
+            value={isMuted ? 0 : Math.round(volume * 100)}
+            onChange={(e) => setAudioVolume(parseInt(e.target.value) / 100)}
             className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer"
           />
           <Volume2 size={14} className="text-muted-foreground" />
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
 
         {/* Call to Action for Anonymous Users */}
         {!user && (
