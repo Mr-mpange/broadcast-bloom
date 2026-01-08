@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useDJData } from "@/hooks/useDJData";
 import { useNowPlaying } from "@/hooks/useNowPlaying";
+import { useGeolocationListeners } from "@/hooks/useGeolocationListeners";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import ShowManagement from "@/components/ShowManagement";
@@ -11,6 +12,7 @@ import BlogManagement from "@/components/BlogManagement";
 import LiveChat from "@/components/LiveChat";
 import LocalAudioPlayer from "@/components/LocalAudioPlayer";
 import BroadcastControlPanel from "@/components/BroadcastControlPanel";
+import GeolocationListenerMap from "@/components/GeolocationListenerMap";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +33,8 @@ import {
 
 const DJDashboard = () => {
   const { user, loading: authLoading } = useAuth();
-  const { shows, listenerStats, isDJ, loading, updateNowPlaying, profile, refetchShows } = useDJData();
+  const { shows, isDJ, loading, updateNowPlaying, profile, refetchShows } = useDJData();
+  const { listenerStats } = useGeolocationListeners();
   const { nowPlaying } = useNowPlaying();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -113,17 +116,10 @@ const DJDashboard = () => {
     }
   };
 
-  // Calculate stats
-  const totalListeners = listenerStats.reduce(
-    (acc, stat) => acc + (stat.listener_count || 0),
-    0
-  );
-  const uniqueCountries = new Set(
-    listenerStats.filter((s) => s.country).map((s) => s.country)
-  ).size;
-  const avgListeners = listenerStats.length
-    ? Math.round(totalListeners / listenerStats.length)
-    : 0;
+  // Calculate stats from geolocation data
+  const totalListeners = listenerStats.total_listeners;
+  const uniqueCountries = listenerStats.countries.length;
+  const avgListeners = totalListeners;
 
   if (authLoading || loading) {
     return (
@@ -295,8 +291,9 @@ const DJDashboard = () => {
         {/* Tabbed Content */}
         <div className="mt-6">
           <Tabs defaultValue="broadcast" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="broadcast">Broadcast Control</TabsTrigger>
+              <TabsTrigger value="listeners">Live Listeners</TabsTrigger>
               <TabsTrigger value="shows">Show Management</TabsTrigger>
               <TabsTrigger value="audio">Local Audio</TabsTrigger>
               <TabsTrigger value="chat">Live Chat</TabsTrigger>
@@ -320,6 +317,24 @@ const DJDashboard = () => {
                 <BroadcastControlPanel />
               </div>
             </TabsContent>
+            <TabsContent value="listeners" className="mt-6">
+              <div className="grid gap-6">
+                <Card className="glass-panel border-border/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Globe className="h-5 w-5 text-primary" />
+                      Real-Time Listener Tracking
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Live geolocation-based listener statistics and geographic distribution
+                    </p>
+                  </CardHeader>
+                </Card>
+                
+                <GeolocationListenerMap />
+              </div>
+            </TabsContent>
+            
             <TabsContent value="shows" className="mt-6">
               {profile && (
                 <ShowManagement 
@@ -381,35 +396,43 @@ const DJDashboard = () => {
           </Tabs>
         </div>
 
-        {/* Listener Stats */}
-        {listenerStats.length > 0 && (
+        {/* Real-Time Listener Overview */}
+        {listenerStats.total_listeners > 0 && (
           <Card className="glass-panel border-border/50 mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-foreground">
                 <Users className="h-5 w-5 text-primary" />
-                Recent Listener Stats
+                Live Listener Overview
               </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Real-time geolocation-based listener statistics
+              </p>
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {listenerStats.slice(0, 8).map((stat) => (
+                {listenerStats.countries.slice(0, 8).map((country) => (
                   <div
-                    key={stat.id}
+                    key={country.country_code}
                     className="p-3 rounded-lg bg-muted/30 border border-border/50"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">
-                        {stat.country || "Unknown"}
+                        {country.country_name}
                       </span>
                       <span className="font-semibold text-foreground">
-                        {stat.listener_count?.toLocaleString() || 0}
+                        {country.listener_count.toLocaleString()}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(stat.recorded_at).toLocaleDateString()}
+                      Live listeners
                     </p>
                   </div>
                 ))}
+              </div>
+              <div className="mt-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  View detailed listener map in the "Live Listeners" tab
+                </p>
               </div>
             </CardContent>
           </Card>

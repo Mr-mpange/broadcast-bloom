@@ -195,23 +195,47 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
                           {/* Safe image rendering with multiple fallbacks */}
                           {(() => {
                             try {
-                              return liveShow.image_url && typeof liveShow.image_url === 'string' ? (
+                              // Multiple layers of safety checks
+                              if (!liveShow || 
+                                  typeof liveShow !== 'object' || 
+                                  !liveShow.hasOwnProperty('image_url') ||
+                                  !liveShow.image_url || 
+                                  typeof liveShow.image_url !== 'string' ||
+                                  liveShow.image_url.trim() === '') {
+                                return (
+                                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                                    <Radio className="h-6 w-6 text-muted-foreground" />
+                                  </div>
+                                );
+                              }
+                              
+                              return (
                                 <img
                                   src={liveShow.image_url}
                                   alt={liveShow.name || 'Show image'}
                                   className="w-12 h-12 rounded-lg object-cover"
                                   onError={(e) => {
                                     try {
-                                      e.currentTarget.style.display = 'none';
+                                      const target = e.currentTarget;
+                                      if (target && target.parentNode) {
+                                        const placeholder = document.createElement('div');
+                                        placeholder.className = 'w-12 h-12 rounded-lg bg-muted flex items-center justify-center';
+                                        placeholder.innerHTML = '<svg class="h-6 w-6 text-muted-foreground" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>';
+                                        target.parentNode.replaceChild(placeholder, target);
+                                      }
                                     } catch (err) {
-                                      console.warn('Error hiding failed image:', err);
+                                      console.warn('Error replacing failed image:', err);
                                     }
                                   }}
                                 />
-                              ) : null;
+                              );
                             } catch (error) {
                               console.warn('Error rendering show image:', error);
-                              return null;
+                              return (
+                                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                                  <Radio className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                              );
                             }
                           })()}
                           <div>
