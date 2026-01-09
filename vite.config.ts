@@ -30,6 +30,8 @@ export default defineConfig(({ mode }) => ({
       }
     }
   },
+  // Ensure .htaccess and other public files are copied
+  publicDir: 'public',
   // PWA optimizations
   define: {
     __PWA_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),

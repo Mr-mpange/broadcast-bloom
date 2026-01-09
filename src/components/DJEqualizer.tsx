@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Equalizer, Volume2, VolumeX } from 'lucide-react';
+import { Sliders, Volume2, VolumeX } from 'lucide-react';
 
 interface EQSettings {
   high: number;
@@ -60,7 +60,7 @@ const DJEqualizer = ({ deckId, eq, onEQChange }: DJEqualizerProps) => {
     <Card className="glass-panel border-border/50">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-foreground">
-          <Equalizer className="h-5 w-5 text-primary" />
+          <Sliders className="h-5 w-5 text-primary" />
           3-Band EQ - Deck {deckId}
         </CardTitle>
       </CardHeader>
