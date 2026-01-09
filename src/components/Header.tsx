@@ -12,6 +12,7 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDJOrAdmin, setIsDJOrAdmin] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [roleCheckLoading, setRoleCheckLoading] = useState(true);
   const { user, signOut } = useAuth();
   const location = useLocation();
 
@@ -22,22 +23,48 @@ const Header = () => {
     if (!user) {
       setIsDJOrAdmin(false);
       setIsAdmin(false);
+      setRoleCheckLoading(false);
       return;
     }
 
     const checkRole = async () => {
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
-      
-      if (data && data.length > 0) {
-        const roles = data.map(r => r.role);
-        setIsDJOrAdmin(roles.some(role => ['dj', 'admin', 'presenter'].includes(role)));
-        setIsAdmin(roles.includes('admin'));
-      } else {
+      setRoleCheckLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+        
+        if (error) {
+          console.error('Error checking user roles:', error);
+          setIsDJOrAdmin(false);
+          setIsAdmin(false);
+          setRoleCheckLoading(false);
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          const roles = data.map(r => r.role);
+          console.log('User roles found:', roles); // Debug log
+          
+          const hasStaffRole = roles.some(role => ['dj', 'admin', 'presenter', 'moderator'].includes(role));
+          const hasAdminRole = roles.includes('admin');
+          
+          setIsDJOrAdmin(hasStaffRole);
+          setIsAdmin(hasAdminRole);
+          
+          console.log('isDJOrAdmin:', hasStaffRole, 'isAdmin:', hasAdminRole); // Debug log
+        } else {
+          console.log('No roles found for user'); // Debug log
+          setIsDJOrAdmin(false);
+          setIsAdmin(false);
+        }
+      } catch (error) {
+        console.error('Error in role check:', error);
         setIsDJOrAdmin(false);
         setIsAdmin(false);
+      } finally {
+        setRoleCheckLoading(false);
       }
     };
 
@@ -110,8 +137,8 @@ const Header = () => {
               </Link>
             )}
             {user && <NotificationCenter />}
-            {/* Only show dashboard links if user is NOT already on a dashboard */}
-            {isDJOrAdmin && !isOnDashboard && (
+            {/* Only show dashboard links if user is NOT already on a dashboard AND has proper roles */}
+            {user && !roleCheckLoading && isDJOrAdmin && !isOnDashboard && (
               <Link to="/dj">
                 <Button variant="outline" size="sm" className="gap-2">
                   <LayoutDashboard size={16} />
@@ -119,7 +146,7 @@ const Header = () => {
                 </Button>
               </Link>
             )}
-            {isAdmin && !isOnDashboard && (
+            {user && !roleCheckLoading && isAdmin && !isOnDashboard && (
               <Link to="/admin">
                 <Button variant="outline" size="sm" className="gap-2">
                   <Shield size={16} />
@@ -196,7 +223,7 @@ const Header = () => {
                   </Button>
                 </Link>
               )}
-              {isDJOrAdmin && !isOnDashboard && (
+              {isDJOrAdmin && !isOnDashboard && !roleCheckLoading && (
                 <Link to="/dj" onClick={() => setIsMenuOpen(false)}>
                   <Button variant="outline" className="w-full mt-2 gap-2">
                     <LayoutDashboard size={16} />
@@ -204,7 +231,7 @@ const Header = () => {
                   </Button>
                 </Link>
               )}
-              {isAdmin && !isOnDashboard && (
+              {isAdmin && !isOnDashboard && !roleCheckLoading && (
                 <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
                   <Button variant="outline" className="w-full mt-2 gap-2">
                     <Shield size={16} />

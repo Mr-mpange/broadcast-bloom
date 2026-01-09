@@ -14,43 +14,52 @@ export const useRoleRedirect = () => {
 
     setIsChecking(true);
     try {
-      const { data } = await supabase
+      console.log('Checking roles for user:', user.id); // Debug log
+      
+      const { data, error } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id);
       
-      if (data && data.length > 0) {
-        const roles = data.map(r => r.role);
-        
-        // Priority order: admin > dj/presenter > moderator > listener
-        if (roles.includes('admin')) {
-          // Only redirect if not already on admin dashboard
-          if (location.pathname !== '/admin') {
-            navigate("/admin", { replace: true });
-          }
-        } else if (roles.some(role => ['dj', 'presenter'].includes(role))) {
-          // Only redirect if not already on DJ dashboard
-          if (location.pathname !== '/dj') {
-            navigate("/dj", { replace: true });
-          }
-        } else {
-          // For moderators and listeners, go to home page only if on auth page
-          if (location.pathname === '/auth') {
-            navigate("/", { replace: true });
-          }
-        }
-      } else {
-        // No roles assigned, go to home page only if on auth page
+      if (error) {
+        console.error("Error fetching user roles:", error);
+        // Fallback to home page if on auth page
         if (location.pathname === '/auth') {
           navigate("/", { replace: true });
         }
+        return;
+      }
+      
+      console.log('User roles data:', data); // Debug log
+      
+      if (data && data.length > 0) {
+        const roles = data.map(r => r.role);
+        console.log('User roles:', roles); // Debug log
+        
+        // Priority order: admin > dj/presenter > moderator > listener
+        if (roles.includes('admin')) {
+          console.log('Redirecting admin to /admin'); // Debug log
+          navigate("/admin", { replace: true });
+        } else if (roles.some(role => ['dj', 'presenter'].includes(role))) {
+          console.log('Redirecting DJ/Presenter to /dj'); // Debug log
+          navigate("/dj", { replace: true });
+        } else if (roles.includes('moderator')) {
+          console.log('Redirecting moderator to /dj'); // Debug log
+          navigate("/dj", { replace: true }); // Moderators also get DJ dashboard access
+        } else {
+          // For listeners, go to home page
+          console.log('Redirecting listener to home'); // Debug log
+          navigate("/", { replace: true });
+        }
+      } else {
+        console.log('No roles found, redirecting to home'); // Debug log
+        // No roles assigned, go to home page
+        navigate("/", { replace: true });
       }
     } catch (error) {
       console.error("Error checking user roles:", error);
-      // Fallback to home page only if on auth page
-      if (location.pathname === '/auth') {
-        navigate("/", { replace: true });
-      }
+      // Fallback to home page
+      navigate("/", { replace: true });
     } finally {
       setIsChecking(false);
     }
