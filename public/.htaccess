@@ -32,8 +32,8 @@ RewriteRule ^(.*)$ https://mpanges.com/$1 [L,R=301]
     # Strict Transport Security (HTTPS only)
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
     
-    # Content Security Policy for mpanges.com
-    Header always set Content-Security-Policy "default-src 'self' https://mpanges.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: https://mpanges.com; style-src 'self' 'unsafe-inline' https: https://fonts.googleapis.com; img-src 'self' data: https: https://mpanges.com; font-src 'self' https: https://fonts.gstatic.com; connect-src 'self' https: wss: https://mpanges.com; media-src 'self' https: https://mpanges.com; object-src 'none'; frame-src 'self' https:; base-uri 'self';"
+    # Content Security Policy for mpanges.com with geolocation APIs
+    Header always set Content-Security-Policy "default-src 'self' https://mpanges.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: https://mpanges.com; style-src 'self' 'unsafe-inline' https: https://fonts.googleapis.com; img-src 'self' data: https: https://mpanges.com; font-src 'self' https: https://fonts.gstatic.com; connect-src 'self' https: wss: https://mpanges.com https://ipapi.co https://ip-api.com https://ipinfo.io; media-src 'self' https: https://mpanges.com; object-src 'none'; frame-src 'self' https:; base-uri 'self';"
     
     # Referrer Policy
     Header always set Referrer-Policy "strict-origin-when-cross-origin"

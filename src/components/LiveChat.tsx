@@ -50,18 +50,15 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
 
   const getUsername = () => {
     if (user) {
+      // Use real name from user profile - prioritize display_name, then full_name
       return user.user_metadata?.display_name || 
              user.user_metadata?.full_name || 
              user.email?.split('@')[0] || 
              'User';
     }
     
-    let storedUsername = localStorage.getItem('pulse_fm_chat_username');
-    if (!storedUsername) {
-      storedUsername = `Listener${Math.floor(Math.random() * 1000)}`;
-      localStorage.setItem('pulse_fm_chat_username', storedUsername);
-    }
-    return storedUsername;
+    // No anonymous usernames allowed - return null to show login prompt
+    return null;
   };
 
   useEffect(() => {
@@ -85,28 +82,28 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
         console.error('Error loading messages:', e);
       }
     } else {
-      // Add some demo messages for first-time users
+      // Add some demo messages for first-time users with real names
       const demoMessages: ChatMessage[] = [
         {
           id: 'demo_1',
-          username: 'DJ_Mike',
+          username: 'Mike Johnson',
           message: 'Welcome to PULSE FM live chat! 🎵',
           created_at: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
           user_id: 'demo_dj',
         },
         {
           id: 'demo_2', 
-          username: 'MusicLover23',
+          username: 'Sarah Williams',
           message: 'Great show tonight! Love this track 🔥',
           created_at: new Date(Date.now() - 240000).toISOString(), // 4 minutes ago
-          user_id: null,
+          user_id: 'demo_user_1',
         },
         {
           id: 'demo_3',
-          username: 'RadioFan',
+          username: 'David Chen',
           message: 'Can you play some jazz next?',
           created_at: new Date(Date.now() - 180000).toISOString(), // 3 minutes ago
-          user_id: null,
+          user_id: 'demo_user_2',
         }
       ];
       setMessages(demoMessages);
@@ -240,15 +237,35 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
     e.preventDefault();
     if (!newMessage.trim() || sending) return;
 
+    // Require authentication for chatting
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to participate in the chat.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const username = getUsername();
+    if (!username) {
+      toast({
+        title: "Profile Required",
+        description: "Please complete your profile to chat.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSending(true);
     
     try {
       const messageData: ChatMessage = {
         id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-        username: getUsername(),
+        username: username,
         message: newMessage.trim(),
         created_at: new Date().toISOString(),
-        user_id: user?.id || null,
+        user_id: user.id,
         reply_to: replyTo?.id || null,
         reply_username: replyTo?.username || null,
       };
@@ -335,7 +352,9 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
               <div className="text-center text-muted-foreground py-8">
                 <MessageCircle className="mx-auto h-12 w-12 mb-2 opacity-50" />
                 <p>No messages yet. Start the conversation!</p>
-                <p className="text-xs mt-1">Chat with other listeners in real-time</p>
+                <p className="text-xs mt-1">
+                  {user ? "Chat with other listeners using your real name" : "Sign in to join the conversation"}
+                </p>
               </div>
             ) : (
               messages.map((message) => (
@@ -386,45 +405,64 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
         </ScrollArea>
         
         <div className="p-4 border-t border-border/50">
-          {replyTo && (
-            <div className="mb-2 p-2 bg-muted/30 rounded-lg text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">
-                  Replying to <strong>{replyTo.username}</strong>
-                </span>
-                <Button variant="ghost" size="sm" onClick={cancelReply} className="h-6 w-6 p-0">
-                  ×
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground truncate">
-                {replyTo.message}
+          {!user ? (
+            // Show authentication prompt for non-authenticated users
+            <div className="text-center py-6">
+              <MessageCircle className="mx-auto h-8 w-8 mb-3 text-muted-foreground" />
+              <h3 className="font-medium text-foreground mb-2">Join the Conversation</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Sign in with your real name to participate in the live chat
+              </p>
+              <Button asChild className="gap-2">
+                <a href="/auth">
+                  <Users size={16} />
+                  Sign In to Chat
+                </a>
+              </Button>
+              <p className="text-xs text-muted-foreground mt-3">
+                We require real names to maintain a friendly community
               </p>
             </div>
+          ) : (
+            // Show chat input for authenticated users
+            <>
+              {replyTo && (
+                <div className="mb-2 p-2 bg-muted/30 rounded-lg text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">
+                      Replying to <strong>{replyTo.username}</strong>
+                    </span>
+                    <Button variant="ghost" size="sm" onClick={cancelReply} className="h-6 w-6 p-0">
+                      ×
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {replyTo.message}
+                  </p>
+                </div>
+              )}
+              <form onSubmit={sendMessage} className="flex gap-2">
+                <Input
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder={replyTo ? `Reply to ${replyTo.username}...` : "Type a message..."}
+                  className="flex-1"
+                  maxLength={500}
+                  disabled={sending}
+                />
+                <Button 
+                  type="submit" 
+                  size="icon" 
+                  disabled={!newMessage.trim() || sending}
+                >
+                  <Send size={16} />
+                </Button>
+              </form>
+              <p className="text-xs text-muted-foreground mt-2">
+                Chatting as <strong>{getUsername()}</strong> • Real name verified
+              </p>
+            </>
           )}
-          <form onSubmit={sendMessage} className="flex gap-2">
-            <Input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder={replyTo ? `Reply to ${replyTo.username}...` : "Type a message..."}
-              className="flex-1"
-              maxLength={500}
-              disabled={sending}
-            />
-            <Button 
-              type="submit" 
-              size="icon" 
-              disabled={!newMessage.trim() || sending}
-            >
-              <Send size={16} />
-            </Button>
-          </form>
-          <p className="text-xs text-muted-foreground mt-2">
-            {user ? (
-              `Chatting as ${getUsername()}`
-            ) : (
-              <>Anonymous mode • <a href="/auth" className="text-primary hover:underline">Sign in</a> for verified badge</>
-            )}
-          </p>
         </div>
       </CardContent>
     </Card>

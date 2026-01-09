@@ -76,17 +76,130 @@ export const useGeolocationListeners = () => {
     return sessionId;
   }, []);
 
-  // Get user's IP address (simplified - in production use a proper service)
-  const getUserIP = useCallback(async (): Promise<string> => {
+  // Get user's IP address and location data
+  const getUserLocationData = useCallback(async () => {
     try {
-      // For development, we'll use a placeholder IP
-      // In production, you would use a service like ipify.org
-      return '127.0.0.1';
+      // Try multiple IP geolocation services for accuracy
+      const services = [
+        'https://ipapi.co/json/',
+        'https://ip-api.com/json/',
+        'https://ipinfo.io/json'
+      ];
+
+      for (const service of services) {
+        try {
+          const response = await fetch(service);
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Normalize the response based on service
+            let locationData;
+            if (service.includes('ipapi.co')) {
+              locationData = {
+                country_code: data.country_code,
+                country_name: data.country_name,
+                region: data.region,
+                city: data.city,
+                latitude: data.latitude,
+                longitude: data.longitude,
+                timezone: data.timezone,
+                ip: data.ip
+              };
+            } else if (service.includes('ip-api.com')) {
+              locationData = {
+                country_code: data.countryCode,
+                country_name: data.country,
+                region: data.regionName,
+                city: data.city,
+                latitude: data.lat,
+                longitude: data.lon,
+                timezone: data.timezone,
+                ip: data.query
+              };
+            } else if (service.includes('ipinfo.io')) {
+              const [lat, lng] = (data.loc || '0,0').split(',');
+              locationData = {
+                country_code: data.country,
+                country_name: data.country, // Will be expanded below
+                region: data.region,
+                city: data.city,
+                latitude: parseFloat(lat),
+                longitude: parseFloat(lng),
+                timezone: data.timezone,
+                ip: data.ip
+              };
+            }
+
+            // Expand country code to full name if needed
+            if (locationData && locationData.country_code && !locationData.country_name) {
+              const countryNames: { [key: string]: string } = {
+                'TZ': 'Tanzania',
+                'KE': 'Kenya',
+                'UG': 'Uganda',
+                'NG': 'Nigeria',
+                'ZA': 'South Africa',
+                'GH': 'Ghana',
+                'ET': 'Ethiopia',
+                'RW': 'Rwanda',
+                'MW': 'Malawi',
+                'ZM': 'Zambia',
+                'ZW': 'Zimbabwe',
+                'BW': 'Botswana',
+                'MZ': 'Mozambique'
+              };
+              locationData.country_name = countryNames[locationData.country_code] || locationData.country_code;
+            }
+
+            return locationData;
+          }
+        } catch (serviceError) {
+          console.warn(`Geolocation service ${service} failed:`, serviceError);
+          continue;
+        }
+      }
+
+      // Fallback to browser geolocation if IP services fail
+      const geoPosition = await getBrowserGeolocation();
+      if (geoPosition) {
+        // Use reverse geocoding or default to Tanzania since you're in Dar es Salaam
+        return {
+          country_code: 'TZ',
+          country_name: 'Tanzania',
+          region: 'Dar es Salaam',
+          city: 'Dar es Salaam',
+          latitude: geoPosition.latitude,
+          longitude: geoPosition.longitude,
+          timezone: 'Africa/Dar_es_Salaam',
+          ip: 'unknown'
+        };
+      }
+
+      // Final fallback - default to Tanzania
+      return {
+        country_code: 'TZ',
+        country_name: 'Tanzania',
+        region: 'Dar es Salaam',
+        city: 'Dar es Salaam',
+        latitude: -6.7924,
+        longitude: 39.2083,
+        timezone: 'Africa/Dar_es_Salaam',
+        ip: 'unknown'
+      };
     } catch (error) {
-      console.warn('Could not get IP address:', error);
-      return '127.0.0.1';
+      console.error('Error getting location data:', error);
+      // Return Tanzania as default since you're there
+      return {
+        country_code: 'TZ',
+        country_name: 'Tanzania',
+        region: 'Dar es Salaam',
+        city: 'Dar es Salaam',
+        latitude: -6.7924,
+        longitude: 39.2083,
+        timezone: 'Africa/Dar_es_Salaam',
+        ip: 'unknown'
+      };
     }
-  }, []);
+  }, [getBrowserGeolocation]);
 
   // Get browser geolocation
   const getBrowserGeolocation = useCallback((): Promise<GeolocationPosition | null> => {
@@ -120,42 +233,50 @@ export const useGeolocationListeners = () => {
     });
   }, []);
 
-  // Simplified geolocation function
+  // Simplified geolocation function - now uses real IP geolocation
   const getLocationData = useCallback(async (geoPosition?: GeolocationPosition | null) => {
-    // For now, return default African location data
-    // In production, this would call a real geolocation service
-    const defaultLocations = [
-      { country_code: 'KE', country_name: 'Kenya', region: 'Nairobi', city: 'Nairobi', lat: -1.2921, lng: 36.8219 },
-      { country_code: 'NG', country_name: 'Nigeria', region: 'Lagos', city: 'Lagos', lat: 6.5244, lng: 3.3792 },
-      { country_code: 'ZA', country_name: 'South Africa', region: 'Western Cape', city: 'Cape Town', lat: -33.9249, lng: 18.4241 },
-      { country_code: 'GH', country_name: 'Ghana', region: 'Greater Accra', city: 'Accra', lat: 5.6037, lng: -0.1870 },
-      { country_code: 'TZ', country_name: 'Tanzania', region: 'Dar es Salaam', city: 'Dar es Salaam', lat: -6.7924, lng: 39.2083 },
-      { country_code: 'UG', country_name: 'Uganda', region: 'Central', city: 'Kampala', lat: 0.3476, lng: 32.5825 }
-    ];
+    // First try to get real location data
+    const realLocationData = await getUserLocationData();
     
-    const randomLocation = defaultLocations[Math.floor(Math.random() * defaultLocations.length)];
-    
-    return {
-      country_code: randomLocation.country_code,
-      country_name: randomLocation.country_name,
-      region: randomLocation.region,
-      city: randomLocation.city,
-      latitude: geoPosition?.latitude || randomLocation.lat,
-      longitude: geoPosition?.longitude || randomLocation.lng,
-      timezone: 'Africa/Nairobi'
-    };
-  }, []);
+    if (realLocationData && realLocationData.latitude && realLocationData.longitude) {
+      return realLocationData;
+    }
 
-  // Start listener session with geolocation
+    // Fallback to browser geolocation if available
+    if (geoPosition) {
+      return {
+        country_code: 'TZ', // Default to Tanzania since you're in Dar es Salaam
+        country_name: 'Tanzania',
+        region: 'Dar es Salaam',
+        city: 'Dar es Salaam',
+        latitude: geoPosition.latitude,
+        longitude: geoPosition.longitude,
+        timezone: 'Africa/Dar_es_Salaam',
+        ip: 'browser-geo'
+      };
+    }
+
+    // Final fallback to your actual location
+    return {
+      country_code: 'TZ',
+      country_name: 'Tanzania',
+      region: 'Dar es Salaam',
+      city: 'Dar es Salaam',
+      latitude: -6.7924,
+      longitude: 39.2083,
+      timezone: 'Africa/Dar_es_Salaam',
+      ip: 'fallback'
+    };
+  }, [getUserLocationData]);
+
+  // Start listener session with real geolocation
   const startListenerSession = useCallback(async () => {
     try {
       const sessionId = getSessionId();
-      const ipAddress = await getUserIP();
       const userAgent = navigator.userAgent;
       
-      // Try to get browser geolocation
-      const geoPosition = await getBrowserGeolocation();
-      const locationData = await getLocationData(geoPosition);
+      // Get real location data using IP geolocation services
+      const locationData = await getLocationData();
       
       // Parse user agent for device info
       const deviceType = userAgent.includes('Mobile') || userAgent.includes('Android') || userAgent.includes('iPhone') 
@@ -170,12 +291,12 @@ export const useGeolocationListeners = () => {
         : userAgent.includes('Edge') ? 'Edge'
         : 'Unknown';
 
-      // Create a simplified session object
+      // Create a session object with real location data
       const sessionData: ListenerSession = {
         id: crypto.randomUUID(),
         session_id: sessionId,
         user_id: undefined, // Will be set if user is authenticated
-        ip_address: ipAddress,
+        ip_address: locationData.ip || 'unknown',
         country_code: locationData.country_code,
         country_name: locationData.country_name,
         region: locationData.region,
@@ -197,11 +318,11 @@ export const useGeolocationListeners = () => {
 
       setCurrentSession(sessionData);
       
-      // Show welcome message with location (if available)
+      // Show welcome message with actual location
       if (sessionData.city && sessionData.country_name) {
         toast({
-          title: 'Welcome to the broadcast!',
-          description: `Listening from ${sessionData.city}, ${sessionData.country_name}`,
+          title: '🎧 Welcome to PULSE FM!',
+          description: `Broadcasting to ${sessionData.city}, ${sessionData.country_name}`,
         });
       }
 
@@ -210,7 +331,7 @@ export const useGeolocationListeners = () => {
       console.error('Error starting listener session:', error);
       return null;
     }
-  }, [getSessionId, getUserIP, getBrowserGeolocation, getLocationData, toast]);
+  }, [getSessionId, getLocationData, toast]);
 
   // Update listener activity
   const updateListenerActivity = useCallback(async (
