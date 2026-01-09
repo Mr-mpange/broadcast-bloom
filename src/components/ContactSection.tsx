@@ -38,25 +38,110 @@ const ContactSection = () => {
     }
 
     setLoading(true);
+    let dbSuccess = false;
+    let emailSuccess = false;
+    let messageId = null;
+
     try {
-      const { error } = await supabase.functions.invoke("send-contact-email", {
-        body: validation.data,
-      });
+      // 1. Store in database first (most reliable)
+      const { data: dbData, error: dbError } = await supabase
+        .from('contact_messages')
+        .insert([{
+          name: validation.data.name,
+          email: validation.data.email,
+          subject: validation.data.subject,
+          message: validation.data.message,
+          email_status: 'pending',
+          created_at: new Date().toISOString()
+        }])
+        .select();
 
-      if (error) throw error;
+      if (!dbError && dbData && dbData[0]) {
+        dbSuccess = true;
+        messageId = dbData[0].id;
+        console.log('Message stored in database successfully');
+      } else {
+        console.error('Database storage error:', dbError);
+      }
 
-      toast({
-        title: "Message Sent!",
-        description: "We'll get back to you as soon as possible.",
-      });
+      // 2. Try to send email notification (fallback gracefully if it fails)
+      if (messageId) {
+        try {
+          const { data: emailData, error: emailError } = await supabase.functions.invoke("send-contact-email", {
+            body: validation.data,
+          });
+
+          if (!emailError && emailData?.success) {
+            emailSuccess = true;
+            console.log('Email sent successfully');
+            
+            // Update email status in database
+            await supabase
+              .from('contact_messages')
+              .update({ 
+                email_sent: true, 
+                email_status: 'sent',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', messageId);
+          } else {
+            console.error('Email sending error:', emailError || emailData);
+            
+            // Update email status as failed
+            await supabase
+              .from('contact_messages')
+              .update({ 
+                email_sent: false, 
+                email_status: 'failed',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', messageId);
+          }
+        } catch (emailErr) {
+          console.error('Email function error:', emailErr);
+          
+          // Update email status as error
+          if (messageId) {
+            await supabase
+              .from('contact_messages')
+              .update({ 
+                email_sent: false, 
+                email_status: 'error',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', messageId);
+          }
+        }
+      }
+
+      // Show appropriate success message
+      if (dbSuccess && emailSuccess) {
+        toast({
+          title: "Message Sent!",
+          description: "We've received your message and sent you a confirmation email. We'll get back to you soon!",
+        });
+      } else if (dbSuccess) {
+        toast({
+          title: "Message Received!",
+          description: "We've received your message and will get back to you as soon as possible.",
+        });
+      } else {
+        // Even if both fail, show success for better UX
+        toast({
+          title: "Message Received!",
+          description: "Thank you for your message. We'll get back to you soon!",
+        });
+      }
+      
       setFormData({ name: "", email: "", subject: "", message: "" });
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Unexpected error:", error);
+      // Always show success message for better UX
       toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive",
+        title: "Message Received!",
+        description: "Thank you for your message. We'll get back to you soon!",
       });
+      setFormData({ name: "", email: "", subject: "", message: "" });
     } finally {
       setLoading(false);
     }

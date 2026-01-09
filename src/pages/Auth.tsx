@@ -4,6 +4,7 @@ import { Radio, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { useRoleRedirect } from "@/hooks/useRoleRedirect";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
@@ -19,15 +20,16 @@ const Auth = () => {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   const { user, signIn, signUp } = useAuth();
+  const { redirectBasedOnRole, isChecking } = useRoleRedirect();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
+    if (user && !isChecking) {
       // Redirect to appropriate dashboard based on user role
-      navigate("/dj");
+      redirectBasedOnRole();
     }
-  }, [user, navigate]);
+  }, [user, isChecking, redirectBasedOnRole]);
 
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -194,10 +196,12 @@ const Auth = () => {
               type="submit"
               variant="live"
               className="w-full gap-2"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isChecking}
             >
               {isSubmitting ? (
                 "Please wait..."
+              ) : isChecking ? (
+                "Checking permissions..."
               ) : (
                 <>
                   {isLogin ? "Sign In" : "Create Account"}

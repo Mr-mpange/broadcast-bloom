@@ -31,6 +31,7 @@ import {
   Play,
   Pause,
   Volume2,
+  Mail,
 } from "lucide-react";
 
 interface User {
@@ -77,6 +78,17 @@ interface BroadcastSession {
   broadcaster?: User;
 }
 
+interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  created_at: string;
+  email_sent?: boolean;
+  email_status?: string;
+}
+
 const AdminDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const { permissions, loading: broadcastLoading } = useBroadcastControl();
@@ -88,6 +100,7 @@ const AdminDashboard = () => {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [activeSessions, setActiveSessions] = useState<BroadcastSession[]>([]);
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [contentStats, setContentStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -134,6 +147,7 @@ const AdminDashboard = () => {
         fetchUserRoles(),
         fetchTimeSlots(),
         fetchActiveSessions(),
+        fetchContactMessages(),
         fetchContentStats(),
       ]);
     } catch (error) {
@@ -236,6 +250,50 @@ const AdminDashboard = () => {
   const fetchContentStats = async () => {
     const stats = await getContentStats();
     setContentStats(stats);
+  };
+
+  const fetchContactMessages = async () => {
+    const { data } = await supabase
+      .from('contact_messages')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    if (data) {
+      setContactMessages(data);
+    }
+  };
+
+  const handleResendEmail = async (message: ContactMessage) => {
+    try {
+      const { error } = await supabase.functions.invoke("send-contact-email", {
+        body: {
+          name: message.name,
+          email: message.email,
+          subject: message.subject,
+          message: message.message,
+        },
+      });
+
+      if (error) {
+        toast({
+          title: "Email Error",
+          description: "Failed to resend email. Check if email service is configured.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Email Sent",
+          description: "Confirmation email has been resent to the user.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to resend email.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -456,11 +514,12 @@ const AdminDashboard = () => {
 
         {/* Admin Tabs */}
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="users">User Management</TabsTrigger>
             <TabsTrigger value="schedule">Schedule Management</TabsTrigger>
             <TabsTrigger value="content">Content Management</TabsTrigger>
             <TabsTrigger value="sessions">Active Sessions</TabsTrigger>
+            <TabsTrigger value="contact">Contact Messages</TabsTrigger>
             <TabsTrigger value="analytics">System Analytics</TabsTrigger>
           </TabsList>
 
@@ -788,6 +847,78 @@ const AdminDashboard = () => {
                             LIVE
                           </Badge>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Contact Messages */}
+          <TabsContent value="contact" className="mt-6">
+            <Card className="glass-panel border-border/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-primary" />
+                  Contact Messages
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {contactMessages.length === 0 ? (
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      No contact messages received yet.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {contactMessages.map((message) => (
+                      <div
+                        key={message.id}
+                        className="p-4 rounded-lg bg-muted/30 border border-border/50"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium">{message.name}</p>
+                              <Badge variant="outline" className="text-xs">
+                                {message.email}
+                              </Badge>
+                              {message.email_status && (
+                                <Badge 
+                                  variant={
+                                    message.email_status === 'sent' ? 'default' : 
+                                    message.email_status === 'failed' || message.email_status === 'error' ? 'destructive' : 
+                                    'secondary'
+                                  }
+                                  className="text-xs"
+                                >
+                                  📧 {message.email_status}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(message.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleResendEmail(message)}
+                              className="text-xs"
+                            >
+                              <Mail className="h-3 w-3 mr-1" />
+                              {message.email_sent ? 'Resend' : 'Send'} Email
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="font-medium text-sm mb-2 text-primary">{message.subject}</p>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-background/50 p-3 rounded border">
+                          {message.message}
+                        </p>
                       </div>
                     ))}
                   </div>
