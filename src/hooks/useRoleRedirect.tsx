@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 export const useRoleRedirect = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isChecking, setIsChecking] = useState(false);
 
   const redirectBasedOnRole = async () => {
@@ -23,21 +24,33 @@ export const useRoleRedirect = () => {
         
         // Priority order: admin > dj/presenter > moderator > listener
         if (roles.includes('admin')) {
-          navigate("/admin");
+          // Only redirect if not already on admin dashboard
+          if (location.pathname !== '/admin') {
+            navigate("/admin", { replace: true });
+          }
         } else if (roles.some(role => ['dj', 'presenter'].includes(role))) {
-          navigate("/dj");
+          // Only redirect if not already on DJ dashboard
+          if (location.pathname !== '/dj') {
+            navigate("/dj", { replace: true });
+          }
         } else {
-          // For moderators and listeners, go to home page
-          navigate("/");
+          // For moderators and listeners, go to home page only if on auth page
+          if (location.pathname === '/auth') {
+            navigate("/", { replace: true });
+          }
         }
       } else {
-        // No roles assigned, go to home page
-        navigate("/");
+        // No roles assigned, go to home page only if on auth page
+        if (location.pathname === '/auth') {
+          navigate("/", { replace: true });
+        }
       }
     } catch (error) {
       console.error("Error checking user roles:", error);
-      // Fallback to home page
-      navigate("/");
+      // Fallback to home page only if on auth page
+      if (location.pathname === '/auth') {
+        navigate("/", { replace: true });
+      }
     } finally {
       setIsChecking(false);
     }

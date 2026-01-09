@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Radio, Headphones, LogIn, LogOut, LayoutDashboard, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +13,10 @@ const Header = () => {
   const [isDJOrAdmin, setIsDJOrAdmin] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const { user, signOut } = useAuth();
+  const location = useLocation();
+
+  // Check if user is currently on a dashboard page
+  const isOnDashboard = location.pathname === '/dj' || location.pathname === '/admin';
 
   useEffect(() => {
     if (!user) {
@@ -96,8 +100,18 @@ const Header = () => {
                 Listen Live
               </a>
             </Button>
+            {/* Show Home button when on dashboard */}
+            {isOnDashboard && (
+              <Link to="/">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Radio size={16} />
+                  Home
+                </Button>
+              </Link>
+            )}
             {user && <NotificationCenter />}
-            {isDJOrAdmin && (
+            {/* Only show dashboard links if user is NOT already on a dashboard */}
+            {isDJOrAdmin && !isOnDashboard && (
               <Link to="/dj">
                 <Button variant="outline" size="sm" className="gap-2">
                   <LayoutDashboard size={16} />
@@ -105,7 +119,7 @@ const Header = () => {
                 </Button>
               </Link>
             )}
-            {isAdmin && (
+            {isAdmin && !isOnDashboard && (
               <Link to="/admin">
                 <Button variant="outline" size="sm" className="gap-2">
                   <Shield size={16} />
@@ -173,7 +187,16 @@ const Header = () => {
                   Listen Live
                 </a>
               </Button>
-              {isDJOrAdmin && (
+              {/* Show Home button when on dashboard (mobile) */}
+              {isOnDashboard && (
+                <Link to="/" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="outline" className="w-full mt-2 gap-2">
+                    <Radio size={16} />
+                    Home
+                  </Button>
+                </Link>
+              )}
+              {isDJOrAdmin && !isOnDashboard && (
                 <Link to="/dj" onClick={() => setIsMenuOpen(false)}>
                   <Button variant="outline" className="w-full mt-2 gap-2">
                     <LayoutDashboard size={16} />
@@ -181,7 +204,7 @@ const Header = () => {
                   </Button>
                 </Link>
               )}
-              {isAdmin && (
+              {isAdmin && !isOnDashboard && (
                 <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
                   <Button variant="outline" className="w-full mt-2 gap-2">
                     <Shield size={16} />
