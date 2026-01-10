@@ -17,37 +17,56 @@ export const useLiveShows = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  // Load live shows from localStorage on mount
   useEffect(() => {
+    const savedLiveShows = localStorage.getItem('pulse_fm_live_shows');
+    if (savedLiveShows) {
+      try {
+        const parsed = JSON.parse(savedLiveShows);
+        setLiveShows(Array.isArray(parsed) ? parsed : []);
+      } catch (error) {
+        console.error('Error loading saved live shows:', error);
+        setLiveShows([]);
+      }
+    }
+    
     fetchLiveShows();
     subscribeToLiveShows();
   }, []);
 
+  // Save live shows to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('pulse_fm_live_shows', JSON.stringify(liveShows));
+  }, [liveShows]);
+
   const fetchLiveShows = async () => {
     setLoading(true);
     try {
-      // Since there's no live_shows table, we'll fetch shows and simulate live status
+      // Check if we have saved live shows first
+      const savedLiveShows = localStorage.getItem('pulse_fm_live_shows');
+      if (savedLiveShows) {
+        try {
+          const parsed = JSON.parse(savedLiveShows);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setLiveShows(parsed);
+            setLoading(false);
+            return; // Use saved data, don't simulate
+          }
+        } catch (error) {
+          console.error('Error parsing saved live shows:', error);
+        }
+      }
+
+      // Only simulate if no saved live shows exist
       const { data, error } = await supabase
         .from('shows')
         .select('*')
-        .limit(5); // Get some shows as placeholders
+        .limit(5);
 
       if (!error && data) {
-        // Simulate some shows being live and ensure all required properties exist
-        const liveShows = data
-          .map((show, index) => ({
-            id: show.id || `show_${index}`,
-            name: show.name || `Show ${index + 1}`,
-            image_url: show.image_url || null,
-            description: show.description || null,
-            genre: show.genre || null,
-            host_id: show.host_id || 'unknown',
-            is_live: index < 2 // First 2 shows are "live"
-          }))
-          .filter(show => show.is_live && show.id && show.name); // Only valid live shows
-        
-        setLiveShows(liveShows);
+        // Don't automatically mark shows as live - start with empty state
+        setLiveShows([]);
       } else {
-        // Fallback to empty array if there's an error
         setLiveShows([]);
       }
     } catch (error) {
@@ -130,14 +149,18 @@ export const useLiveShows = () => {
 
   const endLiveShow = async (showId: string) => {
     try {
-      // Simulate ending a live show
+      // Remove from live shows immediately
+      setLiveShows(prev => {
+        const updated = prev.filter(show => show.id !== showId);
+        // Also update localStorage immediately
+        localStorage.setItem('pulse_fm_live_shows', JSON.stringify(updated));
+        return updated;
+      });
+
       toast({
         title: "Show ended",
         description: "Your live broadcast has ended."
       });
-
-      // Remove from live shows
-      setLiveShows(prev => prev.filter(show => show.id !== showId));
 
       return { success: true };
     } catch (err: any) {
@@ -151,11 +174,21 @@ export const useLiveShows = () => {
     }
   };
 
+  const clearAllLiveShows = () => {
+    setLiveShows([]);
+    localStorage.removeItem('pulse_fm_live_shows');
+    toast({
+      title: "All shows ended",
+      description: "All live broadcasts have been stopped."
+    });
+  };
+
   return {
     liveShows,
     loading,
     startLiveShow,
     endLiveShow,
+    clearAllLiveShows,
     refetch: fetchLiveShows
   };
 };

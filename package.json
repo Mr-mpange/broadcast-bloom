@@ -8,7 +8,9 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "clear-cache": "node clear-cache.js",
+    "dev:fresh": "npm run clear-cache && npm run dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

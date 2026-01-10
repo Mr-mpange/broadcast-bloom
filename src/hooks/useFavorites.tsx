@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 
 export const useFavorites = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [favorites, setFavorites] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -35,7 +36,11 @@ export const useFavorites = () => {
   const toggleFavorite = useCallback(
     async (showId: string) => {
       if (!user) {
-        toast.error("Please sign in to save favorites");
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to save favorites",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -50,11 +55,18 @@ export const useFavorites = () => {
           .eq("show_id", showId);
 
         if (error) {
-          toast.error("Failed to remove favorite");
+          toast({
+            title: "Error",
+            description: "Failed to remove favorite",
+            variant: "destructive",
+          });
           console.error(error);
         } else {
           setFavorites((prev) => prev.filter((id) => id !== showId));
-          toast.success("Removed from favorites");
+          toast({
+            title: "Success",
+            description: "Removed from favorites",
+          });
         }
       } else {
         // Add favorite
@@ -63,11 +75,18 @@ export const useFavorites = () => {
           .insert({ user_id: user.id, show_id: showId });
 
         if (error) {
-          toast.error("Failed to add favorite");
+          toast({
+            title: "Error",
+            description: "Failed to add favorite",
+            variant: "destructive",
+          });
           console.error(error);
         } else {
           setFavorites((prev) => [...prev, showId]);
-          toast.success("Added to favorites");
+          toast({
+            title: "Success",
+            description: "Added to favorites",
+          });
         }
       }
     },

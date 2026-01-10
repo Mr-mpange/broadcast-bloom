@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Play, Pause, X, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LiveBadge from "./LiveBadge";
+import { useGlobalLiveStatus } from "@/hooks/useGlobalLiveStatus";
 
 const MobilePlayer = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const { isLive } = useGlobalLiveStatus();
 
   const nowPlaying = {
     title: "African Giant",
@@ -28,7 +30,7 @@ const MobilePlayer = () => {
             </Button>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <LiveBadge size="sm" />
+                <LiveBadge size="sm" isLive={isLive} />
               </div>
               <p className="text-sm font-medium text-foreground truncate">
                 {nowPlaying.title} – {nowPlaying.artist}
@@ -52,7 +54,7 @@ const MobilePlayer = () => {
     <div className="fixed inset-0 z-50 md:hidden bg-background flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
-        <LiveBadge />
+        <LiveBadge isLive={isLive} showWhenOffline={true} />
         <Button variant="ghost" size="icon" onClick={() => setIsExpanded(false)}>
           <X size={24} />
         </Button>

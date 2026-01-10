@@ -10,6 +10,11 @@ interface HardwareStatus {
   isLive: boolean;
   bpm: number;
   currentTrack?: string;
+  lastControlChange?: {
+    control: number;
+    value: number;
+    timestamp: number;
+  };
 }
 
 interface MixerDevice {
@@ -143,65 +148,6 @@ export const useHardwareMixer = () => {
     }
   }, [toast]);
 
-  // Handle MIDI messages from hardware
-  const handleMIDIMessage = useCallback((data: Uint8Array) => {
-    const [command, control, value] = data;
-    
-    // Handle Control Change messages (CC)
-    if (command === 176) {
-      const normalizedValue = Math.round((value / 127) * 100);
-      
-      // Map common MIDI CC numbers to mixer controls
-      switch (control) {
-        case 1: // Crossfader
-          setHardwareStatus(prev => ({ ...prev, crossfader: normalizedValue }));
-          break;
-        case 7: // Master Volume
-          setHardwareStatus(prev => ({ ...prev, masterVolume: normalizedValue }));
-          break;
-        case 14: // Channel 1 Volume
-          setHardwareStatus(prev => ({ ...prev, channel1Volume: normalizedValue }));
-          break;
-        case 15: // Channel 2 Volume
-          setHardwareStatus(prev => ({ ...prev, channel2Volume: normalizedValue }));
-          break;
-        case 16: // Microphone Level
-          setHardwareStatus(prev => ({ ...prev, micLevel: normalizedValue }));
-          break;
-        default:
-          console.log(`Unknown MIDI CC: ${control} = ${value}`);
-      }
-    }
-    
-    // Handle Note On/Off for buttons
-    if (command === 144 || command === 128) { // Note On/Off
-      const isPressed = command === 144 && value > 0;
-      
-      switch (control) {
-        case 60: // Play button (C4)
-          if (isPressed) {
-            toggleLive();
-          }
-          break;
-        // Add more button mappings as needed
-      }
-    }
-  }, []);
-
-  // Toggle live broadcasting
-  const toggleLive = useCallback(() => {
-    setHardwareStatus(prev => {
-      const newLiveState = !prev.isLive;
-      
-      toast({
-        title: newLiveState ? "Now Live!" : "Gone Offline",
-        description: newLiveState ? "Hardware mixer is now broadcasting live" : "Hardware mixer stopped broadcasting",
-      });
-      
-      return { ...prev, isLive: newLiveState };
-    });
-  }, [toast]);
-
   // Send control data to broadcast system
   const sendToBroadcast = useCallback(async (controlData: Partial<HardwareStatus>) => {
     try {
@@ -224,6 +170,103 @@ export const useHardwareMixer = () => {
       console.error('Failed to send to broadcast system:', error);
     }
   }, [activeDevice]);
+
+  // Toggle live broadcasting
+  const toggleLive = useCallback(() => {
+    setHardwareStatus(prev => {
+      const newLiveState = !prev.isLive;
+      
+      toast({
+        title: newLiveState ? "Now Live!" : "Gone Offline",
+        description: newLiveState ? "Hardware mixer is now broadcasting live" : "Hardware mixer stopped broadcasting",
+      });
+      
+      return { ...prev, isLive: newLiveState };
+    });
+  }, [toast]);
+
+  // Handle MIDI messages from hardware
+  const handleMIDIMessage = useCallback((data: Uint8Array) => {
+    const [command, control, value] = data;
+    
+    // Handle Control Change messages (CC)
+    if (command === 176) {
+      const normalizedValue = Math.round((value / 127) * 100);
+      
+      // Extended MIDI CC mapping for comprehensive DJ control
+      switch (control) {
+        case 1: // Crossfader
+          setHardwareStatus(prev => ({ ...prev, crossfader: normalizedValue }));
+          console.log(`Crossfader: ${normalizedValue}%`);
+          break;
+        case 7: // Master Volume
+          setHardwareStatus(prev => ({ ...prev, masterVolume: normalizedValue }));
+          console.log(`Master Volume: ${normalizedValue}%`);
+          break;
+        case 14: // Channel 1 Volume
+          setHardwareStatus(prev => ({ ...prev, channel1Volume: normalizedValue }));
+          console.log(`Channel 1 Volume: ${normalizedValue}%`);
+          break;
+        case 15: // Channel 2 Volume
+          setHardwareStatus(prev => ({ ...prev, channel2Volume: normalizedValue }));
+          console.log(`Channel 2 Volume: ${normalizedValue}%`);
+          break;
+        case 16: // Microphone Level
+          setHardwareStatus(prev => ({ ...prev, micLevel: normalizedValue }));
+          console.log(`Microphone Level: ${normalizedValue}%`);
+          break;
+        // Additional common DJ controller mappings
+        case 2: // Channel 1 EQ High
+        case 3: // Channel 1 EQ Mid  
+        case 4: // Channel 1 EQ Low
+        case 5: // Channel 2 EQ High
+        case 6: // Channel 2 EQ Mid
+        case 8: // Channel 2 EQ Low
+          console.log(`EQ Control CC${control}: ${normalizedValue}%`);
+          break;
+        case 9: // Headphone Volume
+        case 10: // Headphone Cue Mix
+          console.log(`Headphone Control CC${control}: ${normalizedValue}%`);
+          break;
+        default:
+          console.log(`Hardware Control CC${control}: ${normalizedValue}%`);
+      }
+      
+      // Send all control changes to broadcast system
+      sendToBroadcast({ 
+        lastControlChange: { control, value: normalizedValue, timestamp: Date.now() }
+      });
+    }
+    
+    // Handle Note On/Off for buttons
+    if (command === 144 || command === 128) { // Note On/Off
+      const isPressed = command === 144 && value > 0;
+      
+      switch (control) {
+        case 60: // Play button (C4)
+          if (isPressed) {
+            console.log('Hardware Play button pressed - Going Live!');
+            toggleLive();
+          }
+          break;
+        case 61: // Stop button (C#4)
+          if (isPressed) {
+            console.log('Hardware Stop button pressed');
+            setHardwareStatus(prev => ({ ...prev, isLive: false }));
+          }
+          break;
+        case 62: // Cue button (D4)
+        case 63: // Sync button (D#4)
+        case 64: // Loop button (E4)
+          if (isPressed) {
+            console.log(`Hardware button ${control} pressed`);
+          }
+          break;
+        default:
+          console.log(`Hardware button ${control} ${isPressed ? 'pressed' : 'released'}`);
+      }
+    }
+  }, [toggleLive, sendToBroadcast]);
 
   // Disconnect from current device
   const disconnect = useCallback(() => {

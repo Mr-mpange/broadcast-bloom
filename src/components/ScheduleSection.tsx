@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import LiveBadge from "./LiveBadge";
 import { useSchedule } from "@/hooks/useSchedule";
 import { useAuth } from "@/hooks/useAuth";
+import { useGlobalLiveStatus } from "@/hooks/useGlobalLiveStatus";
 
 const ScheduleSection = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { liveShows } = useGlobalLiveStatus();
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const today = new Date().getDay();
   const [activeDayIndex, setActiveDayIndex] = useState(today);
@@ -87,8 +89,11 @@ const ScheduleSection = () => {
                 scheduleShows.map((item) => {
                   const show = item.show;
                   if (!show) return null;
-                  const isLive = isShowLive(item.start_time, item.end_time);
-                  const progress = isLive ? getProgress(item.start_time, item.end_time) : 0;
+                  
+                  // Check if this show is actually live (not just scheduled)
+                  const isActuallyLive = Array.isArray(liveShows) && liveShows.some(liveShow => liveShow.id === show.id);
+                  const isScheduledLive = isShowLive(item.start_time, item.end_time);
+                  const progress = isScheduledLive ? getProgress(item.start_time, item.end_time) : 0;
                   
                   return (
                     <Link
@@ -96,7 +101,7 @@ const ScheduleSection = () => {
                       to={`/shows/${show.id}`}
                       className={cn(
                         "glass-panel rounded-xl p-4 transition-all duration-300 block hover:bg-muted/50",
-                        isLive && "border-primary/30 bg-primary/5"
+                        isActuallyLive && "border-primary/30 bg-primary/5"
                       )}
                     >
                       <div className="flex items-center gap-4">
@@ -124,7 +129,7 @@ const ScheduleSection = () => {
                           <p className="text-muted-foreground text-sm">
                             {formatTime(item.start_time)} - {formatTime(item.end_time)}
                           </p>
-                          {isLive && (
+                          {isScheduledLive && (
                             <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
                               <div 
                                 className="h-full bg-secondary rounded-full"
@@ -141,8 +146,8 @@ const ScheduleSection = () => {
                               {show.genre}
                             </span>
                           )}
-                          {isLive ? (
-                            <LiveBadge size="sm" />
+                          {isActuallyLive ? (
+                            <LiveBadge size="sm" isLive={true} />
                           ) : (
                             <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
                               <Users size={14} className="text-muted-foreground" />
