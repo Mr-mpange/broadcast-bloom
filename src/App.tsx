@@ -15,7 +15,6 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ShowDetail from "./pages/ShowDetail";
 import Shows from "./pages/Shows";
 import Favorites from "./pages/Favorites";
-import TestUsers from "./pages/TestUsers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,10 +55,6 @@ const router = createBrowserRouter([
   {
     path: "/favorites",
     element: <Favorites />,
-  },
-  {
-    path: "/test-users",
-    element: <TestUsers />,
   },
   {
     path: "*",
