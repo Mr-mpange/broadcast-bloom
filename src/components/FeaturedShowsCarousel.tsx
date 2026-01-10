@@ -29,49 +29,70 @@ const FeaturedShowsCarousel = () => {
 
   useEffect(() => {
     const fetchFeaturedShows = async () => {
-      // First try to get featured shows, fallback to all active shows
-      const { data: showsData, error } = await supabase
-        .from("shows")
-        .select("id, name, description, genre, image_url, host_id, is_featured")
-        .eq("is_active", true)
-        .order("is_featured", { ascending: false })
-        .limit(8);
+      try {
+        console.log('Fetching featured shows...');
+        
+        // First try to get featured shows, fallback to all active shows
+        const { data: showsData, error } = await supabase
+          .from("shows")
+          .select("id, name, description, genre, image_url, host_id, is_featured, created_at")
+          .eq("is_active", true)
+          .order("is_featured", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(12);
 
-      if (error) {
-        console.error("Error fetching featured shows:", error);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch host profiles
-      const hostIds = [...new Set((showsData || []).map((s) => s.host_id).filter(Boolean))];
-      let profilesMap: Record<string, string> = {};
-
-      if (hostIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from("profiles")
-          .select("id, display_name")
-          .in("id", hostIds);
-
-        if (profilesData) {
-          profilesMap = profilesData.reduce((acc, p) => {
-            acc[p.id] = p.display_name || "Unknown Host";
-            return acc;
-          }, {} as Record<string, string>);
+        if (error) {
+          console.error("Error fetching featured shows:", error);
+          setLoading(false);
+          return;
         }
+
+        console.log('Shows data received:', showsData);
+
+        if (!showsData || showsData.length === 0) {
+          console.log('No shows found in database');
+          setShows([]);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch host profiles
+        const hostIds = [...new Set(showsData.map((s) => s.host_id).filter(Boolean))];
+        let profilesMap: Record<string, string> = {};
+
+        if (hostIds.length > 0) {
+          console.log('Fetching host profiles for IDs:', hostIds);
+          const { data: profilesData } = await supabase
+            .from("profiles")
+            .select("id, display_name")
+            .in("id", hostIds);
+
+          if (profilesData) {
+            profilesMap = profilesData.reduce((acc, p) => {
+              acc[p.id] = p.display_name || "Unknown Host";
+              return acc;
+            }, {} as Record<string, string>);
+            console.log('Profiles map:', profilesMap);
+          }
+        }
+
+        const combinedShows: Show[] = showsData.map((show) => ({
+          id: show.id,
+          name: show.name,
+          description: show.description,
+          genre: show.genre,
+          image_url: show.image_url,
+          host_name: show.host_id ? profilesMap[show.host_id] || null : null,
+        }));
+
+        console.log('Final combined shows:', combinedShows);
+        setShows(combinedShows);
+      } catch (error) {
+        console.error("Error in fetchFeaturedShows:", error);
+        setShows([]);
+      } finally {
+        setLoading(false);
       }
-
-      const combinedShows: Show[] = (showsData || []).map((show) => ({
-        id: show.id,
-        name: show.name,
-        description: show.description,
-        genre: show.genre,
-        image_url: show.image_url,
-        host_name: show.host_id ? profilesMap[show.host_id] || null : null,
-      }));
-
-      setShows(combinedShows);
-      setLoading(false);
     };
 
     fetchFeaturedShows();
@@ -90,7 +111,29 @@ const FeaturedShowsCarousel = () => {
   }
 
   if (shows.length === 0) {
-    return null;
+    return (
+      <section className="py-16 sm:py-20 bg-card/30">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between mb-10">
+            <div>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-4">
+                <Star size={18} />
+                <span className="text-sm font-medium">Featured Shows</span>
+              </div>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground">
+                Top Radio Shows
+              </h2>
+            </div>
+          </div>
+          <div className="text-center py-12 text-muted-foreground">
+            <Star className="mx-auto h-16 w-16 mb-4 opacity-50" />
+            <h3 className="text-xl font-semibold mb-2">No Shows Available Yet</h3>
+            <p className="text-sm">Amazing radio shows will be featured here soon!</p>
+            <p className="text-xs mt-2">Check back later for the best content.</p>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (

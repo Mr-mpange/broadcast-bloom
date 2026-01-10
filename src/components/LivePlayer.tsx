@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useListenerTracking } from "@/hooks/useListenerTracking";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
+import { useGlobalLiveStatus } from "@/hooks/useGlobalLiveStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Play, 
@@ -40,7 +41,7 @@ interface NowPlaying {
 const LivePlayer = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [liveShows, setLiveShows] = useState<LiveShow[]>([]);
+  const { isLive, liveShows } = useGlobalLiveStatus();
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
   const [isFavorited, setIsFavorited] = useState(false);
   
@@ -60,7 +61,6 @@ const LivePlayer = () => {
   } = useAudioPlayer({ quality: 'medium' }); // You can make this configurable
 
   useEffect(() => {
-    fetchLiveShows();
     fetchNowPlaying();
     subscribeToUpdates();
   }, []);
@@ -70,24 +70,6 @@ const LivePlayer = () => {
       checkIfFavorited();
     }
   }, [user, liveShows]);
-
-  const fetchLiveShows = async () => {
-    // Since there's no live_shows table, we'll fetch shows and simulate live status
-    // In a real app, you'd have a way to track which shows are currently live
-    const { data } = await supabase
-      .from('shows')
-      .select(`
-        *,
-        host:profiles!shows_host_id_fkey (
-          display_name
-        )
-      `)
-      .limit(1); // Get the first show as a placeholder
-
-    if (data && data.length > 0) {
-      setLiveShows(data);
-    }
-  };
 
   const fetchNowPlaying = async () => {
     const { data } = await supabase
@@ -102,22 +84,6 @@ const LivePlayer = () => {
   };
 
   const subscribeToUpdates = () => {
-    // Subscribe to shows table changes
-    const showsChannel = supabase
-      .channel('shows_updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'shows'
-        },
-        () => {
-          fetchLiveShows();
-        }
-      )
-      .subscribe();
-
     const nowPlayingChannel = supabase
       .channel('now_playing_updates')
       .on(
@@ -134,7 +100,6 @@ const LivePlayer = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(showsChannel);
       supabase.removeChannel(nowPlayingChannel);
     };
   };
@@ -213,7 +178,7 @@ const LivePlayer = () => {
   };
 
   const togglePlay = async () => {
-    if (!currentLiveShow) {
+    if (!currentLiveShow || !isLive) {
       toast({
         title: "No live show",
         description: "There are no live shows currently broadcasting.",
@@ -248,7 +213,7 @@ const LivePlayer = () => {
 
   const shareStream = async () => {
     const shareData = {
-      title: liveShows.length > 0 ? `${liveShows[0].name} - Live on PULSE FM` : 'PULSE FM Live Stream',
+      title: currentLiveShow && isLive ? `${currentLiveShow.name} - Live on PULSE FM` : 'PULSE FM Live Stream',
       text: 'Listen to live radio on PULSE FM!',
       url: window.location.origin
     };
@@ -277,7 +242,7 @@ const LivePlayer = () => {
             <Radio className="h-5 w-5 text-primary" />
             Live Stream
           </CardTitle>
-          {currentShow && (
+          {currentLiveShow && isLive && (
             <Badge variant="destructive" className="gap-1">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
               LIVE
@@ -287,27 +252,27 @@ const LivePlayer = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Current Show Info */}
-        {currentShow ? (
+        {currentLiveShow && isLive ? (
           <div className="flex items-start gap-3">
-            {currentShow.image_url && (
+            {currentLiveShow.image_url && (
               <img
-                src={currentShow.image_url}
-                alt={currentShow.name}
+                src={currentLiveShow.image_url}
+                alt={currentLiveShow.name}
                 className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
               />
             )}
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-foreground truncate">
-                {currentShow.name}
+                {currentLiveShow.name}
               </h3>
-              {currentShow.host?.display_name && (
+              {currentLiveShow.host?.display_name && (
                 <p className="text-sm text-muted-foreground">
-                  with {currentShow.host.display_name}
+                  with {currentLiveShow.host.display_name}
                 </p>
               )}
-              {currentShow.genre && (
+              {currentLiveShow.genre && (
                 <Badge variant="secondary" className="text-xs mt-1">
-                  {currentShow.genre}
+                  {currentLiveShow.genre}
                 </Badge>
               )}
             </div>

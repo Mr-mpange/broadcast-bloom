@@ -81,34 +81,8 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
       } catch (e) {
         console.error('Error loading messages:', e);
       }
-    } else {
-      // Add some demo messages for first-time users with real names
-      const demoMessages: ChatMessage[] = [
-        {
-          id: 'demo_1',
-          username: 'Mike Johnson',
-          message: 'Welcome to PULSE FM live chat! 🎵',
-          created_at: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
-          user_id: 'demo_dj',
-        },
-        {
-          id: 'demo_2', 
-          username: 'Sarah Williams',
-          message: 'Great show tonight! Love this track 🔥',
-          created_at: new Date(Date.now() - 240000).toISOString(), // 4 minutes ago
-          user_id: 'demo_user_1',
-        },
-        {
-          id: 'demo_3',
-          username: 'David Chen',
-          message: 'Can you play some jazz next?',
-          created_at: new Date(Date.now() - 180000).toISOString(), // 3 minutes ago
-          user_id: 'demo_user_2',
-        }
-      ];
-      setMessages(demoMessages);
-      saveMessages(demoMessages);
     }
+    // Start with empty chat - no demo messages
   };
 
   // Save messages to localStorage (in real app, this would be Supabase)
