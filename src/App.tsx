@@ -9,6 +9,8 @@ import OfflineIndicator from "@/components/OfflineIndicator";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import DJDashboard from "./pages/DJDashboard";
+import PresenterDashboard from "./pages/PresenterDashboard";
+import ModeratorDashboard from "./pages/ModeratorDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ShowDetail from "./pages/ShowDetail";
 import Shows from "./pages/Shows";
@@ -30,6 +32,14 @@ const router = createBrowserRouter([
   {
     path: "/dj",
     element: <DJDashboard />,
+  },
+  {
+    path: "/presenter",
+    element: <PresenterDashboard />,
+  },
+  {
+    path: "/moderator",
+    element: <ModeratorDashboard />,
   },
   {
     path: "/admin",

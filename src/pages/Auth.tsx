@@ -26,11 +26,11 @@ const Auth = () => {
 
   useEffect(() => {
     if (user && !isChecking) {
-      console.log('User logged in, triggering role redirect'); // Debug log
-      // Add a small delay to ensure user roles are properly set
+      console.log('User logged in, triggering role redirect');
+      // Small delay to ensure user state is fully updated
       setTimeout(() => {
         redirectBasedOnRole();
-      }, 500);
+      }, 100);
     }
   }, [user, isChecking, redirectBasedOnRole]);
 
@@ -74,10 +74,7 @@ const Auth = () => {
             title: "Welcome back!",
             description: "You have successfully logged in.",
           });
-          // Trigger role-based redirect after successful login
-          setTimeout(() => {
-            redirectBasedOnRole();
-          }, 1000);
+          // The useEffect will handle the redirect automatically
         }
       } else {
         const { error } = await signUp(email, password, displayName);

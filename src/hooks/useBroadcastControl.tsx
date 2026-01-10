@@ -10,7 +10,6 @@ export type UserRole = 'admin' | 'dj' | 'presenter' | 'moderator' | 'listener';
 interface BroadcastSession {
   id: string;
   broadcaster_id: string;
-  time_slot_id?: string;
   session_type: string;
   status: SessionStatus;
   started_at: string;
@@ -199,7 +198,6 @@ export const useBroadcastControl = () => {
         .from('broadcast_sessions' as any)
         .insert({
           broadcaster_id: user.id,
-          time_slot_id: currentTimeSlot?.id || null,
           session_type: sessionType,
           status: 'active',
           started_at: new Date().toISOString(),
@@ -290,7 +288,10 @@ export const useBroadcastControl = () => {
 
       if (error) throw error;
 
-      // Log the action to broadcast_log table directly
+      // Log the action to broadcast_log table directly (temporarily disabled)
+      console.log('Microphone toggled:', { action_type: newState ? 'mic_on' : 'mic_off' });
+      
+      /* Temporarily disabled - table doesn't exist yet
       await supabase
         .from('broadcast_log' as any)
         .insert({
@@ -299,6 +300,7 @@ export const useBroadcastControl = () => {
           action_type: newState ? 'mic_on' : 'mic_off',
           timestamp: new Date().toISOString()
         });
+      */
 
       setMicrophoneActive(newState);
       
@@ -332,7 +334,10 @@ export const useBroadcastControl = () => {
 
       if (error) throw error;
 
-      // Log the action
+      // Log the action (temporarily disabled)
+      console.log('Mode switched:', { new_mode: mode, previous_mode: currentMode });
+      
+      /* Temporarily disabled - table doesn't exist yet
       await supabase
         .from('broadcast_log' as any)
         .insert({
@@ -342,6 +347,7 @@ export const useBroadcastControl = () => {
           action_details: JSON.stringify({ new_mode: mode, previous_mode: currentMode }),
           timestamp: new Date().toISOString()
         });
+      */
 
       setCurrentMode(mode);
       
@@ -362,7 +368,7 @@ export const useBroadcastControl = () => {
     }
   };
 
-  // Log broadcast action
+  // Log broadcast action (temporarily disabled due to missing table)
   const logAction = async (
     actionType: string, 
     actionDetails?: any, 
@@ -371,6 +377,10 @@ export const useBroadcastControl = () => {
     if (!currentSession) return;
 
     try {
+      // TODO: Re-enable when broadcast_log table is created
+      console.log('Broadcast action logged:', { actionType, actionDetails, contentId });
+      
+      /* Temporarily disabled - table doesn't exist yet
       await supabase
         .from('broadcast_log' as any)
         .insert({
@@ -381,6 +391,7 @@ export const useBroadcastControl = () => {
           content_id: contentId || null,
           timestamp: new Date().toISOString()
         });
+      */
     } catch (error) {
       console.error('Error logging action:', error);
     }

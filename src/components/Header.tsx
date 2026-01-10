@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Radio, Headphones, LogIn, LogOut, LayoutDashboard, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import LiveBadge from "./LiveBadge";
 import NotificationCenter from "./NotificationCenter";
 import LiveStatus from "./LiveStatus";
 
@@ -15,19 +14,25 @@ const Header = () => {
   const [roleCheckLoading, setRoleCheckLoading] = useState(true);
   const { user, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   // Check if user is currently on a dashboard page
   const isOnDashboard = location.pathname === '/dj' || location.pathname === '/admin';
 
   useEffect(() => {
-    if (!user) {
-      setIsDJOrAdmin(false);
-      setIsAdmin(false);
-      setRoleCheckLoading(false);
-      return;
-    }
+    const checkUserRoles = async () => {
+      if (!user) {
+        setIsDJOrAdmin(false);
+        setIsAdmin(false);
+        setRoleCheckLoading(false);
+        return;
+      }
 
-    const checkRole = async () => {
       setRoleCheckLoading(true);
       try {
         const { data, error } = await supabase
@@ -39,13 +44,9 @@ const Header = () => {
           console.error('Error checking user roles:', error);
           setIsDJOrAdmin(false);
           setIsAdmin(false);
-          setRoleCheckLoading(false);
-          return;
-        }
-        
-        if (data && data.length > 0) {
+        } else if (data && data.length > 0) {
           const roles = data.map(r => r.role);
-          console.log('User roles found:', roles); // Debug log
+          console.log('User roles found:', roles);
           
           const hasStaffRole = roles.some(role => ['dj', 'admin', 'presenter', 'moderator'].includes(role));
           const hasAdminRole = roles.includes('admin');
@@ -53,9 +54,9 @@ const Header = () => {
           setIsDJOrAdmin(hasStaffRole);
           setIsAdmin(hasAdminRole);
           
-          console.log('isDJOrAdmin:', hasStaffRole, 'isAdmin:', hasAdminRole); // Debug log
+          console.log('isDJOrAdmin:', hasStaffRole, 'isAdmin:', hasAdminRole);
         } else {
-          console.log('No roles found for user'); // Debug log
+          console.log('No roles found for user');
           setIsDJOrAdmin(false);
           setIsAdmin(false);
         }
@@ -68,7 +69,16 @@ const Header = () => {
       }
     };
 
-    checkRole();
+    checkUserRoles();
+  }, [user]);
+
+  // Reset states when user changes
+  useEffect(() => {
+    if (!user) {
+      setIsDJOrAdmin(false);
+      setIsAdmin(false);
+      setRoleCheckLoading(false);
+    }
   }, [user]);
 
   const navLinks = [
@@ -137,25 +147,8 @@ const Header = () => {
               </Link>
             )}
             {user && <NotificationCenter />}
-            {/* Only show dashboard links if user is NOT already on a dashboard AND has proper roles */}
-            {user && !roleCheckLoading && isDJOrAdmin && !isOnDashboard && (
-              <Link to="/dj">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <LayoutDashboard size={16} />
-                  DJ Dashboard
-                </Button>
-              </Link>
-            )}
-            {user && !roleCheckLoading && isAdmin && !isOnDashboard && (
-              <Link to="/admin">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Shield size={16} />
-                  Admin
-                </Button>
-              </Link>
-            )}
             {user ? (
-              <Button variant="ghost" size="sm" className="gap-2" onClick={signOut}>
+              <Button variant="ghost" size="sm" className="gap-2" onClick={handleSignOut}>
                 <LogOut size={16} />
                 Sign Out
               </Button>
@@ -223,24 +216,8 @@ const Header = () => {
                   </Button>
                 </Link>
               )}
-              {isDJOrAdmin && !isOnDashboard && !roleCheckLoading && (
-                <Link to="/dj" onClick={() => setIsMenuOpen(false)}>
-                  <Button variant="outline" className="w-full mt-2 gap-2">
-                    <LayoutDashboard size={16} />
-                    DJ Dashboard
-                  </Button>
-                </Link>
-              )}
-              {isAdmin && !isOnDashboard && !roleCheckLoading && (
-                <Link to="/admin" onClick={() => setIsMenuOpen(false)}>
-                  <Button variant="outline" className="w-full mt-2 gap-2">
-                    <Shield size={16} />
-                    Admin Dashboard
-                  </Button>
-                </Link>
-              )}
               {user ? (
-                <Button variant="ghost" className="w-full mt-2 gap-2" onClick={signOut}>
+                <Button variant="ghost" className="w-full mt-2 gap-2" onClick={handleSignOut}>
                   <LogOut size={16} />
                   Sign Out
                 </Button>

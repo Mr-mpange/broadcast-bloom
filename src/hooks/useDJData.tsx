@@ -26,7 +26,7 @@ export const useDJData = () => {
   const [shows, setShows] = useState<Show[]>([]);
   const [listenerStats, setListenerStats] = useState<ListenerStat[]>([]);
   const [profile, setProfile] = useState<{ id: string; role?: string } | null>(null);
-  const [isDJ, setIsDJ] = useState(false);
+  const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,17 +37,17 @@ export const useDJData = () => {
 
     const fetchData = async () => {
       try {
-        // Check if user is DJ
+        // Check if user has DJ or Admin access (for DJ Dashboard specifically)
         const { data: roleData } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", user.id)
           .in("role", ["dj", "admin"]);
 
-        const hasDJRole = roleData && roleData.length > 0;
-        setIsDJ(hasDJRole);
+        const hasRole = roleData && roleData.length > 0;
+        setHasAccess(hasRole);
 
-        if (!hasDJRole) {
+        if (!hasRole) {
           setLoading(false);
           return;
         }
@@ -141,7 +141,7 @@ export const useDJData = () => {
   return {
     shows,
     listenerStats,
-    isDJ,
+    isDJ: hasAccess, // Keep the same interface for backward compatibility
     loading,
     updateNowPlaying,
     profile,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,12 +9,15 @@ export const useRoleRedirect = () => {
   const location = useLocation();
   const [isChecking, setIsChecking] = useState(false);
 
-  const redirectBasedOnRole = async () => {
-    if (!user) return;
+  const redirectBasedOnRole = useCallback(async () => {
+    if (!user) {
+      console.log('No user found, skipping redirect');
+      return;
+    }
 
     setIsChecking(true);
     try {
-      console.log('Checking roles for user:', user.id); // Debug log
+      console.log('Checking roles for user:', user.id, 'email:', user.email);
       
       const { data, error } = await supabase
         .from("user_roles")
@@ -23,47 +26,51 @@ export const useRoleRedirect = () => {
       
       if (error) {
         console.error("Error fetching user roles:", error);
-        // Fallback to home page if on auth page
+        console.log('Redirecting to home due to error');
         if (location.pathname === '/auth') {
           navigate("/", { replace: true });
         }
         return;
       }
       
-      console.log('User roles data:', data); // Debug log
+      console.log('User roles query result:', data);
       
       if (data && data.length > 0) {
         const roles = data.map(r => r.role);
-        console.log('User roles:', roles); // Debug log
+        console.log('User roles found:', roles);
         
-        // Priority order: admin > dj/presenter > moderator > listener
+        // Priority order: admin > dj > presenter > moderator > listener
         if (roles.includes('admin')) {
-          console.log('Redirecting admin to /admin'); // Debug log
+          console.log('User is admin - redirecting to /admin');
           navigate("/admin", { replace: true });
-        } else if (roles.some(role => ['dj', 'presenter'].includes(role))) {
-          console.log('Redirecting DJ/Presenter to /dj'); // Debug log
+        } else if (roles.includes('dj')) {
+          console.log('User is DJ - redirecting to /dj');
           navigate("/dj", { replace: true });
+        } else if (roles.includes('presenter')) {
+          console.log('User is presenter - redirecting to /presenter');
+          navigate("/presenter", { replace: true });
         } else if (roles.includes('moderator')) {
-          console.log('Redirecting moderator to /dj'); // Debug log
-          navigate("/dj", { replace: true }); // Moderators also get DJ dashboard access
+          console.log('User is moderator - redirecting to /moderator');
+          navigate("/moderator", { replace: true });
         } else {
-          // For listeners, go to home page
-          console.log('Redirecting listener to home'); // Debug log
+          console.log('User has other role - redirecting to home');
           navigate("/", { replace: true });
         }
       } else {
-        console.log('No roles found, redirecting to home'); // Debug log
-        // No roles assigned, go to home page
-        navigate("/", { replace: true });
+        console.log('No roles found for user - redirecting to home');
+        if (location.pathname === '/auth') {
+          navigate("/", { replace: true });
+        }
       }
     } catch (error) {
-      console.error("Error checking user roles:", error);
-      // Fallback to home page
-      navigate("/", { replace: true });
+      console.error("Exception in role check:", error);
+      if (location.pathname === '/auth') {
+        navigate("/", { replace: true });
+      }
     } finally {
       setIsChecking(false);
     }
-  };
+  }, [user, navigate, location.pathname]);
 
   return { redirectBasedOnRole, isChecking };
 };

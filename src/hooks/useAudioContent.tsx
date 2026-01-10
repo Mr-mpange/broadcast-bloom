@@ -212,7 +212,7 @@ export const useAudioContent = () => {
           played_by: user?.id,
           played_at: new Date().toISOString(),
           play_type: 'full',
-          listener_count,
+          listener_count: listenerCount,
         });
 
       if (error) {

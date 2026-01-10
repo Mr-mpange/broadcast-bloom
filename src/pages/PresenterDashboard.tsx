@@ -8,13 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import ShowManagement from "@/components/ShowManagement";
 import LiveShowManager from "@/components/LiveShowManager";
-import BlogManagement from "@/components/BlogManagement";
 import LiveChat from "@/components/LiveChat";
-import LocalAudioPlayer from "@/components/LocalAudioPlayer";
 import BroadcastControlPanel from "@/components/BroadcastControlPanel";
 import GeolocationListenerMap from "@/components/GeolocationListenerMap";
-import DJMixer from "@/components/DJMixer";
-import HardwareMixerControl from "@/components/HardwareMixerControl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,12 +25,10 @@ import {
   Play,
   TrendingUp,
   MessageCircle,
-  Headphones,
   Mic,
-  Zap,
 } from "lucide-react";
 
-const DJDashboard = () => {
+const PresenterDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const { shows, isDJ, loading, updateNowPlaying, profile, refetchShows } = useDJData();
   const { listenerStats } = useGeolocationListeners();
@@ -46,7 +40,7 @@ const DJDashboard = () => {
   const [trackArtist, setTrackArtist] = useState("");
   const [selectedShow, setSelectedShow] = useState("");
   const [updating, setUpdating] = useState(false);
-  const [canManageBlogs, setCanManageBlogs] = useState(false);
+  const [isPresenter, setIsPresenter] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -55,21 +49,22 @@ const DJDashboard = () => {
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    const checkDJRole = async () => {
+    const checkPresenterRole = async () => {
       if (!user) return;
       
       const { data } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
-        .in("role", ["dj", "admin"]);
+        .in("role", ["presenter", "admin"]);
       
-      const hasDJAccess = data && data.length > 0;
+      const hasPresenterAccess = data && data.length > 0;
+      setIsPresenter(hasPresenterAccess);
       
-      if (!loading && !hasDJAccess) {
+      if (!loading && !hasPresenterAccess) {
         toast({
           title: "Access Denied",
-          description: "You need DJ or Admin privileges to access this page.",
+          description: "You need Presenter or Admin privileges to access this page.",
           variant: "destructive",
         });
         navigate("/");
@@ -77,28 +72,9 @@ const DJDashboard = () => {
     };
 
     if (user) {
-      checkDJRole();
+      checkPresenterRole();
     }
   }, [user, loading, navigate, toast]);
-
-  useEffect(() => {
-    // Check if user can manage blogs (admin or moderator)
-    const checkBlogPermissions = async () => {
-      if (!user) return;
-      
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .in("role", ["admin", "moderator"]);
-      
-      setCanManageBlogs(data && data.length > 0);
-    };
-
-    if (user) {
-      checkBlogPermissions();
-    }
-  }, [user]);
 
   const handleUpdateNowPlaying = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,9 +129,9 @@ const DJDashboard = () => {
       <Header />
       <main className="container mx-auto px-4 py-8 pt-24">
         <div className="flex items-center gap-3 mb-8">
-          <Radio className="h-8 w-8 text-primary" />
+          <Mic className="h-8 w-8 text-primary" />
           <h1 className="font-display text-3xl font-bold text-foreground">
-            DJ Dashboard
+            Presenter Dashboard
           </h1>
         </div>
 
@@ -309,53 +285,13 @@ const DJDashboard = () => {
 
         {/* Tabbed Content */}
         <div className="mt-6">
-          <Tabs defaultValue="hardware" className="w-full">
-            <TabsList className="grid w-full grid-cols-8">
-              <TabsTrigger value="hardware">Hardware Mixer</TabsTrigger>
-              <TabsTrigger value="mixer">Software Mixer</TabsTrigger>
+          <Tabs defaultValue="broadcast" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="broadcast">Broadcast Control</TabsTrigger>
               <TabsTrigger value="listeners">Live Listeners</TabsTrigger>
               <TabsTrigger value="shows">Show Management</TabsTrigger>
-              <TabsTrigger value="audio">Local Audio</TabsTrigger>
               <TabsTrigger value="chat">Live Chat</TabsTrigger>
-              {canManageBlogs && <TabsTrigger value="blogs">Blog Management</TabsTrigger>}
             </TabsList>
-            
-            <TabsContent value="hardware" className="mt-6">
-              <div className="space-y-6">
-                <Card className="glass-panel border-border/50">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-primary" />
-                      Hardware Mixer Control
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Connect and control your physical DJ mixer hardware for live broadcasting
-                    </p>
-                  </CardHeader>
-                </Card>
-                
-                <HardwareMixerControl />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="mixer" className="mt-6">
-              <div className="space-y-6">
-                <Card className="glass-panel border-border/50">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Music className="h-5 w-5 text-primary" />
-                      Professional DJ Mixer
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Full-featured DJ mixer with dual decks, crossfading, EQ, effects, beat sync, cue points, and looping capabilities
-                    </p>
-                  </CardHeader>
-                </Card>
-                
-                <DJMixer />
-              </div>
-            </TabsContent>
             
             <TabsContent value="broadcast" className="mt-6">
               <div className="grid gap-6">
@@ -366,7 +302,7 @@ const DJDashboard = () => {
                       Professional Broadcasting Controls
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Full control panel for live broadcasting with role-based permissions, microphone control, and emergency override capabilities
+                      Full control panel for live broadcasting with microphone control and show management
                     </p>
                   </CardHeader>
                 </Card>
@@ -374,6 +310,7 @@ const DJDashboard = () => {
                 <BroadcastControlPanel />
               </div>
             </TabsContent>
+            
             <TabsContent value="listeners" className="mt-6">
               <div className="grid gap-6">
                 <Card className="glass-panel border-border/50">
@@ -402,24 +339,6 @@ const DJDashboard = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="audio" className="mt-6">
-              <div className="grid gap-6">
-                <Card className="glass-panel border-border/50">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Headphones className="h-5 w-5 text-primary" />
-                      Play Audio from Your PC
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Upload and play audio files directly from your computer for live broadcasting
-                    </p>
-                  </CardHeader>
-                </Card>
-                
-                <LocalAudioPlayer />
-              </div>
-            </TabsContent>
-
             <TabsContent value="chat" className="mt-6">
               <div className="grid gap-6">
                 <Card className="glass-panel border-border/50">
@@ -439,17 +358,6 @@ const DJDashboard = () => {
                 </div>
               </div>
             </TabsContent>
-            
-            {canManageBlogs && (
-              <TabsContent value="blogs" className="mt-6">
-                {profile && (
-                  <BlogManagement 
-                    profileId={profile.id} 
-                    canManageAll={profile.role === 'admin'} 
-                  />
-                )}
-              </TabsContent>
-            )}
           </Tabs>
         </div>
 
@@ -499,4 +407,4 @@ const DJDashboard = () => {
   );
 };
 
-export default DJDashboard;
+export default PresenterDashboard;

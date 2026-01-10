@@ -76,6 +76,38 @@ export const useGeolocationListeners = () => {
     return sessionId;
   }, []);
 
+  // Get browser geolocation
+  const getBrowserGeolocation = useCallback((): Promise<GeolocationPosition | null> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        setGeolocationPermission('denied');
+        resolve(null);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setGeolocationPermission('granted');
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          });
+        },
+        (error) => {
+          console.warn('Geolocation error:', error);
+          setGeolocationPermission('denied');
+          resolve(null);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 minutes
+        }
+      );
+    });
+  }, []);
+
   // Get user's IP address and location data
   const getUserLocationData = useCallback(async () => {
     try {
@@ -200,38 +232,6 @@ export const useGeolocationListeners = () => {
       };
     }
   }, [getBrowserGeolocation]);
-
-  // Get browser geolocation
-  const getBrowserGeolocation = useCallback((): Promise<GeolocationPosition | null> => {
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        setGeolocationPermission('denied');
-        resolve(null);
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setGeolocationPermission('granted');
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy
-          });
-        },
-        (error) => {
-          console.warn('Geolocation error:', error);
-          setGeolocationPermission('denied');
-          resolve(null);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000 // 5 minutes
-        }
-      );
-    });
-  }, []);
 
   // Simplified geolocation function - now uses real IP geolocation
   const getLocationData = useCallback(async (geoPosition?: GeolocationPosition | null) => {

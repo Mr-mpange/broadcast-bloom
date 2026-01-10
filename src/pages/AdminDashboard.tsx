@@ -173,34 +173,58 @@ const AdminDashboard = () => {
   };
 
   const fetchUserRoles = async () => {
-    const { data } = await supabase
-      .from('user_roles')
-      .select('*')
-      .order('id', { ascending: false });
-    
-    if (data) {
-      // Fetch user details separately
-      const userIds = data.map(role => role.user_id);
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', userIds);
+    try {
+      console.log('Fetching user roles...');
       
-      const rolesWithUsers = data.map(role => {
-        const profile = profiles?.find(p => p.id === role.user_id);
-        return {
-          ...role,
-          assigned_at: new Date().toISOString(), // Add missing field
-          user: profile ? {
-            id: profile.id,
-            email: profile.user_id || '',
-            display_name: profile.display_name,
-            created_at: profile.created_at
-          } : undefined
-        };
-      });
+      // Get all user roles first
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('*');
       
-      setUserRoles(rolesWithUsers);
+      if (rolesError) {
+        console.error('Error fetching user roles:', rolesError);
+        return;
+      }
+      
+      console.log('Roles data:', rolesData);
+      
+      if (rolesData && rolesData.length > 0) {
+        // Get unique user IDs
+        const userIds = [...new Set(rolesData.map(role => role.user_id))];
+        console.log('User IDs:', userIds);
+        
+        // Try to get profiles for these users
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, bio')
+          .in('user_id', userIds);
+        
+        console.log('Profiles data:', profiles);
+        
+        // Create user roles with available data
+        const rolesWithUsers = rolesData.map(role => {
+          const profile = profiles?.find(p => p.user_id === role.user_id);
+          
+          return {
+            ...role,
+            user: {
+              id: role.user_id,
+              email: `user-${role.user_id.slice(0, 8)}@example.com`, // Fallback email
+              display_name: profile?.display_name || `User ${role.user_id.slice(0, 8)}`,
+              created_at: new Date().toISOString()
+            }
+          };
+        });
+        
+        console.log('Final roles with users:', rolesWithUsers);
+        setUserRoles(rolesWithUsers);
+      } else {
+        console.log('No roles data found');
+        setUserRoles([]);
+      }
+    } catch (error) {
+      console.error('Error in fetchUserRoles:', error);
+      setUserRoles([]);
     }
   };
 
@@ -330,25 +354,54 @@ const AdminDashboard = () => {
 
   const handleAssignRole = async (userId: string, role: string) => {
     try {
+      console.log('Assigning role:', role, 'to user:', userId);
+      
       const { error } = await supabase
         .from('user_roles')
         .upsert({
           user_id: userId,
-          role: role as 'admin' | 'dj' | 'moderator' | 'listener'
+          role: role as 'admin' | 'dj' | 'moderator' | 'listener' | 'presenter'
         });
 
       if (error) throw error;
 
       toast({
-        title: "Role Assigned",
+        title: "Role Updated",
         description: `User has been assigned the ${role} role.`,
+      });
+
+      // Refresh the user roles list
+      await fetchUserRoles();
+    } catch (error: any) {
+      console.error('Error assigning role:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to assign role.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveRole = async (userId: string, role: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId)
+        .eq('role', role);
+
+      if (error) throw error;
+
+      toast({
+        title: "Role Removed",
+        description: `${role} role has been removed from user.`,
       });
 
       fetchUserRoles();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to assign role.",
+        description: error.message || "Failed to remove role.",
         variant: "destructive",
       });
     }
@@ -458,7 +511,7 @@ const AdminDashboard = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Users</p>
-                  <p className="text-2xl font-bold text-foreground">{users.length}</p>
+                  <p className="text-2xl font-bold text-foreground">{userRoles.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -577,46 +630,116 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* User Roles List */}
+              {/* User Roles Management */}
               <Card className="glass-panel border-border/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="h-5 w-5 text-primary" />
-                    User Roles
+                    User Roles Management
+                    <Badge variant="secondary" className="ml-2">
+                      {userRoles.length} users
+                    </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {userRoles.map((userRole) => (
-                      <div
-                        key={userRole.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">
-                            {userRole.user?.display_name || userRole.user?.email || 'Unknown User'}
-                          </p>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {userRole.user?.email}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{userRole.role}</Badge>
-                          <select
-                            value={userRole.role}
-                            onChange={(e) => handleAssignRole(userRole.user_id, e.target.value)}
-                            className="text-xs px-2 py-1 rounded bg-background border border-border"
-                          >
-                            <option value="listener">Listener</option>
-                            <option value="dj">DJ</option>
-                            <option value="presenter">Presenter</option>
-                            <option value="moderator">Moderator</option>
-                            <option value="admin">Admin</option>
-                          </select>
-                        </div>
+                    {userRoles.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Users className="mx-auto h-12 w-12 mb-2 opacity-50" />
+                        <p>No user roles assigned yet</p>
+                        <p className="text-xs mt-1">Users will appear here once roles are assigned</p>
                       </div>
-                    ))}
+                    ) : (
+                      userRoles.map((userRole) => (
+                        <div
+                          key={`${userRole.user_id}-${userRole.role}`}
+                          className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50 hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            {/* User Avatar */}
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              <span className="text-sm font-medium text-primary">
+                                {userRole.user?.display_name?.charAt(0)?.toUpperCase() || '?'}
+                              </span>
+                            </div>
+                            
+                            {/* User Info */}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate text-foreground">
+                                {userRole.user?.display_name || 'Unknown User'}
+                              </p>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {userRole.user?.email || 'No email available'}
+                              </p>
+                              {userRole.assigned_at && (
+                                <p className="text-xs text-muted-foreground">
+                                  Assigned: {new Date(userRole.assigned_at).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Role Management */}
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            {/* Current Role Badge */}
+                            <Badge 
+                              variant={
+                                userRole.role === 'admin' ? 'destructive' :
+                                userRole.role === 'dj' ? 'default' :
+                                userRole.role === 'presenter' ? 'secondary' :
+                                userRole.role === 'moderator' ? 'outline' :
+                                'secondary'
+                              }
+                              className="capitalize"
+                            >
+                              {userRole.role}
+                            </Badge>
+                            
+                            {/* Role Change Dropdown */}
+                            <select
+                              value={userRole.role}
+                              onChange={(e) => handleAssignRole(userRole.user_id, e.target.value)}
+                              className="text-xs px-2 py-1 rounded bg-background border border-border hover:border-primary transition-colors min-w-[100px]"
+                            >
+                              <option value="listener">Listener</option>
+                              <option value="moderator">Moderator</option>
+                              <option value="presenter">Presenter</option>
+                              <option value="dj">DJ</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                            
+                            {/* Remove Role Button */}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRemoveRole(userRole.user_id, userRole.role)}
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              title="Remove this role"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
+                  
+                  {/* Role Statistics */}
+                  {userRoles.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-border/50">
+                      <p className="text-sm font-medium mb-2">Role Distribution:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {['admin', 'dj', 'presenter', 'moderator', 'listener'].map(role => {
+                          const count = userRoles.filter(ur => ur.role === role).length;
+                          return count > 0 ? (
+                            <Badge key={role} variant="outline" className="text-xs">
+                              {role}: {count}
+                            </Badge>
+                          ) : null;
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
