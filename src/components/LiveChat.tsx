@@ -140,11 +140,12 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
       // Announce user joined (async operation)
       const announceJoin = async () => {
         try {
-          await channel.send({
+          const result = await channel.send({
             type: 'broadcast',
             event: 'user_joined',
             payload: { username: getUsername() }
           });
+          console.log('User join announced:', result);
         } catch (error) {
           console.log('Failed to announce user join:', error);
         }
@@ -156,11 +157,12 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
         // Announce user left (async operation)
         const announceLeave = async () => {
           try {
-            await channel.send({
+            const result = await channel.send({
               type: 'broadcast',
               event: 'user_left',
               payload: { username: getUsername() }
             });
+            console.log('User leave announced:', result);
           } catch (error) {
             console.log('Failed to announce user leave:', error);
           }
@@ -280,13 +282,14 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
       // Try to send via Supabase broadcast for real-time delivery to others
       try {
         const channel = supabase.channel('live_chat');
-        await channel.send({
+        const result = await channel.send({
           type: 'broadcast',
           event: 'new_message',
           payload: messageData
         });
+        console.log('Message broadcast result:', result);
       } catch (broadcastError) {
-        console.log('Broadcast failed, message saved locally');
+        console.log('Broadcast failed, message saved locally:', broadcastError);
         // Message is already in local state, so chat still works
       }
 

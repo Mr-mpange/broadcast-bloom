@@ -64,6 +64,8 @@ export const useGeolocationListeners = () => {
     top_locations: []
   });
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
   const [geolocationPermission, setGeolocationPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
 
   // Generate unique session ID for this browser session
@@ -316,6 +318,22 @@ export const useGeolocationListeners = () => {
         interactions: 0
       };
 
+      // Try to save to database
+      try {
+        const { error } = await supabase
+          .from('listener_sessions')
+          .insert([sessionData]);
+        
+        if (error) {
+          console.warn('Could not save session to database (table may not exist):', error.message);
+          // Continue anyway with local session
+        } else {
+          console.log('Session saved to database successfully');
+        }
+      } catch (dbError) {
+        console.warn('Database not available, using local session only:', dbError);
+      }
+
       setCurrentSession(sessionData);
       
       // Show welcome message with actual location
@@ -379,33 +397,173 @@ export const useGeolocationListeners = () => {
     }
   }, [currentSession]);
 
-  // Fetch current listener statistics (simplified)
+  // Fetch current listener statistics from real data
   const fetchListenerStats = useCallback(async () => {
+    // Throttle requests - don't fetch more than once every 10 seconds
+    const now = Date.now();
+    if (now - lastFetchTime < 10000) {
+      return;
+    }
+    setLastFetchTime(now);
+
     try {
-      // Generate realistic but simulated statistics
-      const totalListeners = Math.floor(Math.random() * 150) + 50; // 50-200 listeners
-      
-      const countries = [
-        { country_name: 'Kenya', country_code: 'KE', listener_count: Math.floor(totalListeners * 0.3) },
-        { country_name: 'Nigeria', country_code: 'NG', listener_count: Math.floor(totalListeners * 0.25) },
-        { country_name: 'South Africa', country_code: 'ZA', listener_count: Math.floor(totalListeners * 0.2) },
-        { country_name: 'Ghana', country_code: 'GH', listener_count: Math.floor(totalListeners * 0.15) },
-        { country_name: 'Tanzania', country_code: 'TZ', listener_count: Math.floor(totalListeners * 0.1) }
-      ];
+      // Try to get real listener data from Supabase
+      const { data: sessions, error } = await supabase
+        .from('listener_sessions')
+        .select('*')
+        .gte('last_activity', new Date(Date.now() - 5 * 60 * 1000).toISOString()); // Active in last 5 minutes
 
-      const devices = [
-        { connection_type: 'mobile', count: Math.floor(totalListeners * 0.6) },
-        { connection_type: 'desktop', count: Math.floor(totalListeners * 0.3) },
-        { connection_type: 'tablet', count: Math.floor(totalListeners * 0.1) }
-      ];
+      if (error) {
+        console.warn('Could not fetch real listener data (table may not exist):', error.message);
+        
+        // Use current session data as fallback
+        if (currentSession) {
+          setListenerStats({
+            total_listeners: 1,
+            countries: [{
+              country_name: currentSession.country_name || 'Unknown',
+              country_code: currentSession.country_code || 'XX',
+              listener_count: 1
+            }],
+            devices: [{
+              connection_type: currentSession.connection_type || 'desktop',
+              count: 1
+            }],
+            top_locations: [{
+              city: currentSession.city || 'Unknown',
+              region: currentSession.region || 'Unknown',
+              country_name: currentSession.country_name || 'Unknown',
+              listener_count: 1,
+              avg_lat: currentSession.latitude || 0,
+              avg_lng: currentSession.longitude || 0
+            }]
+          });
+        } else {
+          // No current session, show empty stats
+          setListenerStats({
+            total_listeners: 0,
+            countries: [],
+            devices: [],
+            top_locations: []
+          });
+        }
+        return;
+      }
 
-      const top_locations = [
-        { city: 'Nairobi', region: 'Nairobi', country_name: 'Kenya', listener_count: Math.floor(totalListeners * 0.2), avg_lat: -1.2921, avg_lng: 36.8219 },
-        { city: 'Lagos', region: 'Lagos', country_name: 'Nigeria', listener_count: Math.floor(totalListeners * 0.18), avg_lat: 6.5244, avg_lng: 3.3792 },
-        { city: 'Cape Town', region: 'Western Cape', country_name: 'South Africa', listener_count: Math.floor(totalListeners * 0.15), avg_lat: -33.9249, avg_lng: 18.4241 },
-        { city: 'Accra', region: 'Greater Accra', country_name: 'Ghana', listener_count: Math.floor(totalListeners * 0.12), avg_lat: 5.6037, avg_lng: -0.1870 },
-        { city: 'Dar es Salaam', region: 'Dar es Salaam', country_name: 'Tanzania', listener_count: Math.floor(totalListeners * 0.1), avg_lat: -6.7924, avg_lng: 39.2083 }
-      ];
+      // Process real session data
+      const activeSessions = sessions || [];
+      const totalListeners = activeSessions.length;
+
+      if (totalListeners === 0) {
+        // No active sessions, use current session if available
+        if (currentSession) {
+          setListenerStats({
+            total_listeners: 1,
+            countries: [{
+              country_name: currentSession.country_name || 'Unknown',
+              country_code: currentSession.country_code || 'XX',
+              listener_count: 1
+            }],
+            devices: [{
+              connection_type: currentSession.connection_type || 'desktop',
+              count: 1
+            }],
+            top_locations: [{
+              city: currentSession.city || 'Unknown',
+              region: currentSession.region || 'Unknown',
+              country_name: currentSession.country_name || 'Unknown',
+              listener_count: 1,
+              avg_lat: currentSession.latitude || 0,
+              avg_lng: currentSession.longitude || 0
+            }]
+          });
+        } else {
+          setListenerStats({
+            total_listeners: 0,
+            countries: [],
+            devices: [],
+            top_locations: []
+          });
+        }
+        return;
+      }
+
+      // Group by country
+      const countryMap = new Map<string, { name: string, code: string, count: number }>();
+      activeSessions.forEach(session => {
+        const key = session.country_code || 'XX';
+        const existing = countryMap.get(key);
+        if (existing) {
+          existing.count++;
+        } else {
+          countryMap.set(key, {
+            name: session.country_name || 'Unknown',
+            code: session.country_code || 'XX',
+            count: 1
+          });
+        }
+      });
+
+      const countries = Array.from(countryMap.values())
+        .map(country => ({
+          country_name: country.name,
+          country_code: country.code,
+          listener_count: country.count
+        }))
+        .sort((a, b) => b.listener_count - a.listener_count);
+
+      // Group by device type
+      const deviceMap = new Map<string, number>();
+      activeSessions.forEach(session => {
+        const type = session.connection_type || 'unknown';
+        deviceMap.set(type, (deviceMap.get(type) || 0) + 1);
+      });
+
+      const devices = Array.from(deviceMap.entries()).map(([type, count]) => ({
+        connection_type: type,
+        count
+      }));
+
+      // Group by location
+      const locationMap = new Map<string, {
+        city: string,
+        region: string,
+        country_name: string,
+        count: number,
+        lat_sum: number,
+        lng_sum: number
+      }>();
+
+      activeSessions.forEach(session => {
+        const key = `${session.city || 'Unknown'}-${session.country_code || 'XX'}`;
+        const existing = locationMap.get(key);
+        if (existing) {
+          existing.count++;
+          existing.lat_sum += session.latitude || 0;
+          existing.lng_sum += session.longitude || 0;
+        } else {
+          locationMap.set(key, {
+            city: session.city || 'Unknown',
+            region: session.region || 'Unknown',
+            country_name: session.country_name || 'Unknown',
+            count: 1,
+            lat_sum: session.latitude || 0,
+            lng_sum: session.longitude || 0
+          });
+        }
+      });
+
+      const top_locations = Array.from(locationMap.values())
+        .map(location => ({
+          city: location.city,
+          region: location.region,
+          country_name: location.country_name,
+          listener_count: location.count,
+          avg_lat: location.count > 0 ? location.lat_sum / location.count : 0,
+          avg_lng: location.count > 0 ? location.lng_sum / location.count : 0
+        }))
+        .sort((a, b) => b.listener_count - a.listener_count)
+        .slice(0, 10);
 
       setListenerStats({
         total_listeners: totalListeners,
@@ -413,10 +571,41 @@ export const useGeolocationListeners = () => {
         devices,
         top_locations
       });
+
     } catch (error) {
       console.error('Error fetching listener stats:', error);
+      // Fallback to current session only
+      if (currentSession) {
+        setListenerStats({
+          total_listeners: 1,
+          countries: [{
+            country_name: currentSession.country_name || 'Unknown',
+            country_code: currentSession.country_code || 'XX',
+            listener_count: 1
+          }],
+          devices: [{
+            connection_type: currentSession.connection_type || 'desktop',
+            count: 1
+          }],
+          top_locations: [{
+            city: currentSession.city || 'Unknown',
+            region: currentSession.region || 'Unknown',
+            country_name: currentSession.country_name || 'Unknown',
+            listener_count: 1,
+            avg_lat: currentSession.latitude || 0,
+            avg_lng: currentSession.longitude || 0
+          }]
+        });
+      } else {
+        setListenerStats({
+          total_listeners: 0,
+          countries: [],
+          devices: [],
+          top_locations: []
+        });
+      }
     }
-  }, []);
+  }, [lastFetchTime]); // Only depend on lastFetchTime
 
   // Track user interactions (chat, likes, etc.)
   const trackInteraction = useCallback(async (interactionType: string = 'general') => {
@@ -433,25 +622,28 @@ export const useGeolocationListeners = () => {
     await updateListenerActivity(undefined, undefined, quality);
   }, [updateListenerActivity]);
 
-  // Periodic activity updates (heartbeat)
+  // Periodic activity updates (heartbeat) - FIXED to prevent excessive calls
   useEffect(() => {
     if (!currentSession) return;
 
     const interval = setInterval(() => {
       updateListenerActivity();
-    }, 30000); // Update every 30 seconds
+    }, 60000); // Update every 60 seconds (increased from 30)
 
     return () => clearInterval(interval);
-  }, [currentSession, updateListenerActivity]);
+  }, [currentSession]); // Removed updateListenerActivity from dependencies
 
-  // Periodic stats refresh
+  // Periodic stats refresh - FIXED to prevent infinite loop
   useEffect(() => {
+    // Only set up interval if we have a current session and it's not already running
+    if (!currentSession) return;
+
     const interval = setInterval(() => {
       fetchListenerStats();
-    }, 10000); // Refresh every 10 seconds
+    }, 30000); // Refresh every 30 seconds (increased from 10)
 
     return () => clearInterval(interval);
-  }, [fetchListenerStats]);
+  }, [currentSession]); // Removed fetchListenerStats from dependencies to prevent loop
 
   // Handle page visibility changes
   useEffect(() => {
@@ -483,9 +675,11 @@ export const useGeolocationListeners = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [currentSession, endListenerSession]);
 
-  // Initialize
+  // Initialize - FIXED to prevent infinite loop
   useEffect(() => {
     const initialize = async () => {
+      if (loading) return; // Prevent multiple initializations
+      
       setLoading(true);
       
       // Check if we have an existing session
@@ -505,14 +699,18 @@ export const useGeolocationListeners = () => {
         await startListenerSession();
       }
 
-      // Fetch initial stats
+      // Fetch initial stats only once
       await fetchListenerStats();
       
       setLoading(false);
     };
 
-    initialize();
-  }, [getSessionId, startListenerSession, fetchListenerStats]);
+    // Only initialize once
+    if (!initialized) {
+      initialize();
+      setInitialized(true);
+    }
+  }, []); // Empty dependency array to run only once
 
   // Save session data to sessionStorage
   useEffect(() => {

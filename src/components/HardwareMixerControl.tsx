@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -167,7 +167,7 @@ const HardwareMixerControl = ({ onMixerConnect, onHardwareControl }: HardwareMix
     if (!isConnected) {
       toast({
         title: "No Hardware Connected",
-        description: "Connect your hardware mixer first",
+        description: "Hardware mixer required for live broadcasting",
         variant: "destructive",
       });
       return;
@@ -284,13 +284,13 @@ const HardwareMixerControl = ({ onMixerConnect, onHardwareControl }: HardwareMix
         </CardContent>
       </Card>
 
-      {/* Hardware Control Mapping */}
+      {/* Hardware Control Status */}
       {isConnected && (
         <Card className="glass-panel border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
               <Settings className="h-5 w-5 text-primary" />
-              Hardware Control Mapping
+              Hardware Status
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -300,65 +300,34 @@ const HardwareMixerControl = ({ onMixerConnect, onHardwareControl }: HardwareMix
                   <Volume2 size={14} />
                   <span className="font-medium">Crossfader</span>
                 </div>
-                <p className="text-muted-foreground">CC1 → Live Mix</p>
+                <p className="text-muted-foreground">{hardwareStatus.crossfader}%</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/30">
                 <div className="flex items-center gap-2 mb-1">
                   <Volume2 size={14} />
                   <span className="font-medium">Master Vol</span>
                 </div>
-                <p className="text-muted-foreground">CC7 → Broadcast</p>
+                <p className="text-muted-foreground">{hardwareStatus.masterVolume}%</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/30">
                 <div className="flex items-center gap-2 mb-1">
                   <Mic size={14} />
                   <span className="font-medium">Microphone</span>
                 </div>
-                <p className="text-muted-foreground">CC16 → Live Audio</p>
+                <p className="text-muted-foreground">{hardwareStatus.micLevel}%</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/30">
                 <div className="flex items-center gap-2 mb-1">
                   <Power size={14} />
-                  <span className="font-medium">Channel Faders</span>
+                  <span className="font-medium">Status</span>
                 </div>
-                <p className="text-muted-foreground">CC14/15 → Mix</p>
+                <p className="text-muted-foreground">{hardwareStatus.isLive ? 'Live' : 'Offline'}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Connection Instructions */}
-      {!isConnected && (
-        <Card className="glass-panel border-border/50">
-          <CardHeader>
-            <CardTitle className="text-foreground">Connect Your Hardware Mixer</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">Supported Hardware:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Pioneer DJ Controllers (DDJ series)</li>
-                  <li>• Numark DJ Controllers</li>
-                  <li>• Denon DJ Controllers</li>
-                  <li>• Behringer DJ Mixers</li>
-                  <li>• Any MIDI-compatible DJ controller</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2">Connection Steps:</h4>
-                <ol className="text-sm text-muted-foreground space-y-1">
-                  <li>1. Connect your mixer via USB or MIDI</li>
-                  <li>2. Ensure drivers are installed</li>
-                  <li>3. Click "Reconnect" to detect hardware</li>
-                  <li>4. Click "Go Live" to start broadcasting</li>
-                </ol>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };

@@ -13,7 +13,6 @@ import LiveChat from "@/components/LiveChat";
 import LocalAudioPlayer from "@/components/LocalAudioPlayer";
 import BroadcastControlPanel from "@/components/BroadcastControlPanel";
 import GeolocationListenerMap from "@/components/GeolocationListenerMap";
-import DJMixer from "@/components/DJMixer";
 import HardwareMixerControl from "@/components/HardwareMixerControl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -310,9 +309,8 @@ const DJDashboard = () => {
         {/* Tabbed Content */}
         <div className="mt-6">
           <Tabs defaultValue="hardware" className="w-full">
-            <TabsList className="grid w-full grid-cols-8">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="hardware">Hardware Mixer</TabsTrigger>
-              <TabsTrigger value="mixer">Software Mixer</TabsTrigger>
               <TabsTrigger value="broadcast">Broadcast Control</TabsTrigger>
               <TabsTrigger value="listeners">Live Listeners</TabsTrigger>
               <TabsTrigger value="shows">Show Management</TabsTrigger>
@@ -336,24 +334,6 @@ const DJDashboard = () => {
                 </Card>
                 
                 <HardwareMixerControl />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="mixer" className="mt-6">
-              <div className="space-y-6">
-                <Card className="glass-panel border-border/50">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Music className="h-5 w-5 text-primary" />
-                      Professional DJ Mixer
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Full-featured DJ mixer with dual decks, crossfading, EQ, effects, beat sync, cue points, and looping capabilities
-                    </p>
-                  </CardHeader>
-                </Card>
-                
-                <DJMixer />
               </div>
             </TabsContent>
             
