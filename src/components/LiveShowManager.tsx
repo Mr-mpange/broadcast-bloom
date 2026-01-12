@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useLiveShows } from "@/hooks/useLiveShows";
+import { useBroadcastControl } from "@/hooks/useBroadcastControl";
 import { Radio, Play, Square, Clock } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface Show {
   id: string;
@@ -26,7 +28,9 @@ interface LiveShowManagerProps {
 }
 
 const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
+  const { toast } = useToast();
   const { liveShows, startLiveShow, endLiveShow, loading } = useLiveShows();
+  const { startBroadcastSession, endBroadcastSession, isLive, canBroadcast } = useBroadcastControl();
   const [selectedShowId, setSelectedShowId] = useState("");
   const [starting, setStarting] = useState(false);
   const [ending, setEnding] = useState<string | null>(null);
@@ -34,11 +38,35 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
   const handleStartShow = async () => {
     if (!selectedShowId) return;
 
+    if (!canBroadcast) {
+      toast({
+        title: "Not Authorized",
+        description: "You don't have permission to start a live broadcast.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setStarting(true);
     try {
-      await startLiveShow(selectedShowId);
+      // First start the broadcast session
+      const sessionId = await startBroadcastSession('live');
+      
+      if (sessionId) {
+        // Then start the live show
+        await startLiveShow(selectedShowId);
+        toast({
+          title: "Live broadcast started!",
+          description: "Your show is now live and visible to listeners."
+        });
+      }
     } catch (error) {
       console.error('Error starting show:', error);
+      toast({
+        title: "Failed to start broadcast",
+        description: "There was an error starting your live show.",
+        variant: "destructive"
+      });
     }
     setStarting(false);
     setSelectedShowId("");
@@ -47,9 +75,23 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
   const handleEndShow = async (liveShowId: string) => {
     setEnding(liveShowId);
     try {
+      // End the broadcast session first
+      await endBroadcastSession();
+      
+      // Then end the live show
       await endLiveShow(liveShowId);
+      
+      toast({
+        title: "Broadcast ended",
+        description: "Your live show has ended."
+      });
     } catch (error) {
       console.error('Error ending show:', error);
+      toast({
+        title: "Error ending broadcast",
+        description: "There was an error ending your live show.",
+        variant: "destructive"
+      });
     }
     setEnding(null);
   };

@@ -42,33 +42,59 @@ export const useLiveShows = () => {
   const fetchLiveShows = async () => {
     setLoading(true);
     try {
-      // Check if we have saved live shows first
-      const savedLiveShows = localStorage.getItem('pulse_fm_live_shows');
-      if (savedLiveShows) {
-        try {
-          const parsed = JSON.parse(savedLiveShows);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setLiveShows(parsed);
-            setLoading(false);
-            return; // Use saved data, don't simulate
-          }
-        } catch (error) {
-          console.error('Error parsing saved live shows:', error);
+      // First, check for active broadcast sessions
+      const { data: activeSessions, error: sessionsError } = await supabase
+        .from('broadcast_sessions')
+        .select(`
+          id,
+          broadcaster_id,
+          status,
+          started_at,
+          profiles!broadcast_sessions_broadcaster_id_fkey (
+            id,
+            display_name
+          )
+        `)
+        .eq('status', 'active');
+
+      if (!sessionsError && activeSessions && activeSessions.length > 0) {
+        // Get shows for active broadcasters
+        const broadcasterIds = activeSessions.map(session => session.broadcaster_id);
+        
+        const { data: shows, error: showsError } = await supabase
+          .from('shows')
+          .select('*')
+          .in('host_id', broadcasterIds);
+
+        if (!showsError && shows) {
+          // Create live shows from active sessions
+          const liveShowsData = activeSessions.map(session => {
+            const show = shows.find(s => s.host_id === session.broadcaster_id);
+            const profile = session.profiles;
+            
+            return {
+              id: show?.id || `session_${session.id}`,
+              name: show?.name || `Live with ${profile?.display_name || 'DJ'}`,
+              image_url: show?.image_url || null,
+              description: show?.description || null,
+              genre: show?.genre || null,
+              host_id: session.broadcaster_id,
+              is_live: true,
+              session_id: session.id,
+              host: {
+                display_name: profile?.display_name || 'DJ'
+              }
+            };
+          });
+
+          setLiveShows(liveShowsData);
+          setLoading(false);
+          return;
         }
       }
 
-      // Only simulate if no saved live shows exist
-      const { data, error } = await supabase
-        .from('shows')
-        .select('*')
-        .limit(5);
-
-      if (!error && data) {
-        // Don't automatically mark shows as live - start with empty state
-        setLiveShows([]);
-      } else {
-        setLiveShows([]);
-      }
+      // If no active sessions, clear live shows
+      setLiveShows([]);
     } catch (error) {
       console.error('Error fetching live shows:', error);
       setLiveShows([]);
@@ -77,7 +103,24 @@ export const useLiveShows = () => {
   };
 
   const subscribeToLiveShows = () => {
-    const channel = supabase
+    // Subscribe to broadcast sessions changes
+    const sessionsChannel = supabase
+      .channel('broadcast_sessions_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'broadcast_sessions'
+        },
+        () => {
+          fetchLiveShows(); // Refetch when broadcast sessions change
+        }
+      )
+      .subscribe();
+
+    // Also subscribe to shows changes
+    const showsChannel = supabase
       .channel('shows_updates')
       .on(
         'postgres_changes',
@@ -93,7 +136,8 @@ export const useLiveShows = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(sessionsChannel);
+      supabase.removeChannel(showsChannel);
     };
   };
 

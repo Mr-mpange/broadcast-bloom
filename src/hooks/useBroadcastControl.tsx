@@ -102,34 +102,32 @@ export const useBroadcastControl = () => {
     if (!user) return false;
 
     try {
-      // Use direct query instead of RPC for now
-      const now = new Date();
-      const dayOfWeek = now.getDay();
-      const currentTime = now.toTimeString().slice(0, 8);
-
-      // Check if user is admin
-      const { data: adminRole } = await supabase
+      // Check if user has DJ, presenter, or admin role
+      const { data: roles } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
+        .in('role', ['admin', 'dj', 'presenter']);
 
-      if (adminRole) return true;
+      if (!roles || roles.length === 0) {
+        console.log('User has no broadcast roles');
+        return false;
+      }
 
-      // Check if user has active time slot
-      const { data: timeSlot } = await supabase
-        .from('time_slots' as any)
-        .select('*')
-        .eq('assigned_user_id', user.id)
-        .eq('day_of_week', dayOfWeek)
-        .lte('start_time', currentTime)
-        .gte('end_time', currentTime)
-        .eq('is_active', true)
-        .eq('slot_type', 'live')
-        .maybeSingle();
+      // Admin can always broadcast
+      const userRoles = roles.map(r => r.role);
+      if (userRoles.includes('admin')) {
+        console.log('User is admin - can broadcast');
+        return true;
+      }
 
-      return !!timeSlot;
+      // DJs and presenters can broadcast (remove time slot restriction for now)
+      if (userRoles.includes('dj') || userRoles.includes('presenter')) {
+        console.log('User is DJ/presenter - can broadcast');
+        return true;
+      }
+
+      return false;
     } catch (error) {
       console.error('Error checking broadcast permission:', error);
       return false;

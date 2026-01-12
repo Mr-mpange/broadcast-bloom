@@ -39,26 +39,30 @@ export const useHardwareMixer = () => {
   });
   const [isScanning, setIsScanning] = useState(false);
 
-  // Scan for hardware devices
+  // Scan for hardware devices with better filtering to avoid conflicts
   const scanForDevices = useCallback(async () => {
     setIsScanning(true);
     const foundDevices: MixerDevice[] = [];
 
     try {
-      // Scan for MIDI devices
+      // Scan for MIDI devices with more specific filtering
       if (navigator.requestMIDIAccess) {
-        const midiAccess = await navigator.requestMIDIAccess();
+        const midiAccess = await navigator.requestMIDIAccess({ sysex: false });
         const inputs = Array.from(midiAccess.inputs.values());
         
         inputs.forEach((input: any) => {
-          if (input.name && (
-            input.name.toLowerCase().includes('dj') ||
-            input.name.toLowerCase().includes('mixer') ||
-            input.name.toLowerCase().includes('pioneer') ||
-            input.name.toLowerCase().includes('numark') ||
-            input.name.toLowerCase().includes('denon') ||
-            input.name.toLowerCase().includes('behringer')
-          )) {
+          // More specific filtering to avoid Serato conflicts
+          const deviceName = input.name.toLowerCase();
+          const isValidMixer = (
+            (deviceName.includes('dj') && !deviceName.includes('serato')) ||
+            (deviceName.includes('mixer') && !deviceName.includes('serato')) ||
+            deviceName.includes('pioneer') ||
+            deviceName.includes('numark') ||
+            deviceName.includes('denon') ||
+            deviceName.includes('behringer')
+          ) && !deviceName.includes('virtual'); // Avoid virtual MIDI devices
+
+          if (input.name && isValidMixer) {
             foundDevices.push({
               id: input.id,
               name: input.name,
@@ -69,19 +73,23 @@ export const useHardwareMixer = () => {
         });
       }
 
-      // Scan for Audio devices
+      // Scan for Audio devices with better filtering
       if (navigator.mediaDevices) {
         const mediaDevices = await navigator.mediaDevices.enumerateDevices();
         const audioInputs = mediaDevices.filter(device => device.kind === 'audioinput');
         
         audioInputs.forEach(device => {
-          if (device.label && (
-            device.label.toLowerCase().includes('mixer') ||
-            device.label.toLowerCase().includes('dj') ||
-            device.label.toLowerCase().includes('pioneer') ||
-            device.label.toLowerCase().includes('behringer') ||
-            device.label.toLowerCase().includes('focusrite')
-          )) {
+          const deviceLabel = device.label.toLowerCase();
+          const isValidAudioMixer = (
+            deviceLabel.includes('mixer') ||
+            deviceLabel.includes('pioneer') ||
+            deviceLabel.includes('behringer') ||
+            deviceLabel.includes('focusrite') ||
+            deviceLabel.includes('scarlett') ||
+            deviceLabel.includes('audio interface')
+          ) && !deviceLabel.includes('serato'); // Avoid Serato audio devices
+
+          if (device.label && isValidAudioMixer) {
             foundDevices.push({
               id: device.deviceId,
               name: device.label,
@@ -94,40 +102,59 @@ export const useHardwareMixer = () => {
 
       setDevices(foundDevices);
       
-      if (foundDevices.length > 0 && !activeDevice) {
-        // Auto-connect to first available device
-        connectToDevice(foundDevices[0]);
-      }
+      // Don't auto-connect to avoid conflicts with Serato
+      // Let user manually choose which device to connect to
 
     } catch (error) {
       console.error('Device scan failed:', error);
       toast({
         title: "Hardware Scan Failed",
-        description: "Could not scan for hardware devices",
+        description: "Could not scan for hardware devices. Make sure your mixer is connected and not being used by other software like Serato DJ Pro.",
         variant: "destructive",
       });
     } finally {
       setIsScanning(false);
     }
-  }, [activeDevice, toast]);
+  }, [toast]);
 
-  // Connect to a specific device
+  // Connect to a specific device with conflict prevention
   const connectToDevice = useCallback(async (device: MixerDevice) => {
     try {
       if (device.type === 'midi') {
-        const midiAccess = await navigator.requestMIDIAccess();
+        const midiAccess = await navigator.requestMIDIAccess({ sysex: false });
         const midiInput = midiAccess.inputs.get(device.id);
         
         if (midiInput) {
-          // Set up MIDI message listener
+          // Check if device is already in use (basic check)
+          if (midiInput.state !== 'connected') {
+            throw new Error('MIDI device is not available or in use by another application');
+          }
+
+          // Set up MIDI message listener with error handling
           midiInput.onmidimessage = (message: any) => {
-            handleMIDIMessage(message.data);
+            try {
+              handleMIDIMessage(message.data);
+            } catch (error) {
+              console.error('MIDI message handling error:', error);
+            }
+          };
+          
+          // Handle MIDI errors
+          midiInput.onstatechange = (event: any) => {
+            if (event.port.state === 'disconnected') {
+              toast({
+                title: "Hardware Disconnected",
+                description: `${device.name} was disconnected. This may happen if Serato DJ Pro or another application takes control.`,
+                variant: "destructive",
+              });
+              setActiveDevice(null);
+            }
           };
           
           setActiveDevice(device);
           toast({
             title: "Hardware Connected!",
-            description: `Connected to ${device.name}`,
+            description: `Connected to ${device.name}. If Serato DJ Pro freezes, disconnect this device first.`,
           });
         }
       } else if (device.type === 'audio') {
@@ -135,14 +162,14 @@ export const useHardwareMixer = () => {
         setActiveDevice(device);
         toast({
           title: "Audio Device Connected!",
-          description: `Connected to ${device.name}`,
+          description: `Connected to ${device.name}. Audio routing is handled separately from MIDI control.`,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Connection failed:', error);
       toast({
         title: "Connection Failed",
-        description: `Could not connect to ${device.name}`,
+        description: `Could not connect to ${device.name}. Make sure it's not being used by Serato DJ Pro or other software.`,
         variant: "destructive",
       });
     }
