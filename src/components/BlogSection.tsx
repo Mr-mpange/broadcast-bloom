@@ -31,9 +31,7 @@ const BlogSection = () => {
           featured_image_url,
           published_at,
           slug,
-          blog_categories (
-            name
-          )
+          category
         `)
         .eq('is_published', true)
         .order('published_at', { ascending: false })
@@ -51,7 +49,7 @@ const BlogSection = () => {
         excerpt: post.excerpt || '',
         featured_image_url: post.featured_image_url || undefined,
         published_at: post.published_at,
-        category: post.blog_categories?.name || 'General',
+        category: post.category || 'General',
         slug: post.slug
       }));
 

@@ -31,14 +31,7 @@ const DJSection = () => {
         .from('user_roles')
         .select(`
           user_id,
-          role,
-          profiles!user_roles_user_id_fkey (
-            id,
-            display_name,
-            bio,
-            avatar_url,
-            social_links
-          )
+          role
         `)
         .in('role', ['dj', 'presenter']);
 
@@ -48,14 +41,41 @@ const DJSection = () => {
         return;
       }
 
+      if (!userRoles || userRoles.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      // Get unique user IDs
+      const userIds = [...new Set(userRoles.map(ur => ur.user_id))];
+
+      // Fetch profiles for these users
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          user_id,
+          display_name,
+          bio,
+          avatar_url,
+          social_links
+        `)
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        setLoading(false);
+        return;
+      }
+
       // Group by user and combine roles
       const djMap = new Map<string, DJ>();
       
       userRoles?.forEach(userRole => {
-        const profile = userRole.profiles;
+        const profile = profiles?.find(p => p.user_id === userRole.user_id);
         if (!profile) return;
 
-        const userId = profile.id;
+        const userId = profile.user_id;
         if (djMap.has(userId)) {
           // Add role to existing user
           const existingDJ = djMap.get(userId)!;
