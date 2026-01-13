@@ -73,16 +73,22 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
 
   // Load recent messages (simulate using localStorage for demo)
   const loadMessages = () => {
+    // Clear any existing dummy messages on load
+    localStorage.removeItem('pulse_fm_chat_messages');
+    
     const storedMessages = localStorage.getItem('pulse_fm_chat_messages');
     if (storedMessages) {
       try {
         const parsed = JSON.parse(storedMessages);
-        setMessages(parsed.slice(-50)); // Keep last 50 messages
+        setMessages(Array.isArray(parsed) ? parsed.slice(-50) : []); // Keep last 50 messages
       } catch (e) {
         console.error('Error loading messages:', e);
+        setMessages([]);
       }
+    } else {
+      // Start with completely empty chat
+      setMessages([]);
     }
-    // Start with empty chat - no demo messages
   };
 
   // Save messages to localStorage (in real app, this would be Supabase)

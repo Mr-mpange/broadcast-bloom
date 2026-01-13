@@ -1,0 +1,1 @@
+Error: Failed to run sql query: ERROR: 42703: column ur.created_at does not exist LINE 22: ur.created_at ^ HINT: Perhaps you meant to reference the column "u.created_at".
