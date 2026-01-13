@@ -64,6 +64,28 @@ export const useBroadcastControl = () => {
   const [loading, setLoading] = useState(true);
   const [microphoneActive, setMicrophoneActive] = useState(false);
   const [currentMode, setCurrentMode] = useState<BroadcastMode>('automation');
+  const [activeLiveSession, setActiveLiveSession] = useState<{
+    session_id: string;
+    broadcaster_id: string;
+    broadcaster_name: string;
+    started_at: string;
+  } | null>(null);
+
+  // Check for active live sessions
+  const checkActiveLiveSession = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_active_live_session');
+      
+      if (!error && data && data.length > 0) {
+        setActiveLiveSession(data[0]);
+      } else {
+        setActiveLiveSession(null);
+      }
+    } catch (error) {
+      console.error('Error checking active live session:', error);
+      setActiveLiveSession(null);
+    }
+  }, []);
 
   // Check user permissions based on role
   const checkPermissions = useCallback(async () => {
@@ -183,6 +205,36 @@ export const useBroadcastControl = () => {
       return null;
     }
 
+    // For live sessions, check if there's already an active live session
+    if (sessionType === 'live') {
+      try {
+        const { data: activeSession, error } = await supabase
+          .rpc('get_active_live_session');
+
+        if (!error && activeSession && activeSession.length > 0) {
+          const session = activeSession[0];
+          const isCurrentUser = session.broadcaster_id === user.id;
+          
+          if (isCurrentUser) {
+            toast({
+              title: 'Already Broadcasting',
+              description: 'You already have an active live session.',
+              variant: 'destructive',
+            });
+          } else {
+            toast({
+              title: 'Live Session Active',
+              description: `${session.broadcaster_name} is currently live. Please wait for their session to end.`,
+              variant: 'destructive',
+            });
+          }
+          return null;
+        }
+      } catch (error) {
+        console.error('Error checking active sessions:', error);
+      }
+    }
+
     try {
       // End any existing active sessions for this user
       await supabase
@@ -206,7 +258,18 @@ export const useBroadcastControl = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Handle the specific constraint error
+        if (error.message?.includes('Only one live broadcast session can be active')) {
+          toast({
+            title: 'Live Session Already Active',
+            description: 'Another DJ is currently live. Please wait for their session to end before starting yours.',
+            variant: 'destructive',
+          });
+          return null;
+        }
+        throw error;
+      }
 
       if (session) {
         const broadcastSession = session as unknown as BroadcastSession;
@@ -225,11 +288,21 @@ export const useBroadcastControl = () => {
       return null;
     } catch (error: any) {
       console.error('Error starting broadcast session:', error);
-      toast({
-        title: 'Failed to Start Broadcast',
-        description: error.message || 'An unexpected error occurred.',
-        variant: 'destructive',
-      });
+      
+      // Handle specific constraint errors
+      if (error.message?.includes('Only one live broadcast session can be active')) {
+        toast({
+          title: 'Live Session Already Active',
+          description: 'Another DJ is currently live. Please wait for their session to end before starting yours.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Failed to Start Broadcast',
+          description: error.message || 'An unexpected error occurred.',
+          variant: 'destructive',
+        });
+      }
       return null;
     }
   };
@@ -491,12 +564,24 @@ export const useBroadcastControl = () => {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'broadcast_sessions'
+        },
+        () => {
+          // Refresh active live session info when any broadcast session changes
+          checkActiveLiveSession();
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, checkActiveLiveSession]);
 
   // Initialize
   useEffect(() => {
@@ -504,6 +589,7 @@ export const useBroadcastControl = () => {
       setLoading(true);
       await checkPermissions();
       await getCurrentTimeSlot();
+      await checkActiveLiveSession();
       
       // Check for existing active session
       if (user) {
@@ -526,7 +612,7 @@ export const useBroadcastControl = () => {
     };
 
     initialize();
-  }, [user, checkPermissions, getCurrentTimeSlot]);
+  }, [user, checkPermissions, getCurrentTimeSlot, checkActiveLiveSession]);
 
   return {
     // State
@@ -536,6 +622,7 @@ export const useBroadcastControl = () => {
     loading,
     microphoneActive,
     currentMode,
+    activeLiveSession,
     
     // Actions
     startBroadcastSession,
@@ -545,9 +632,12 @@ export const useBroadcastControl = () => {
     logAction,
     triggerEmergencyOverride,
     checkCanBroadcastNow,
+    checkActiveLiveSession,
     
     // Computed
     isLive: currentSession?.status === 'active',
     canBroadcast: permissions.canGoLive,
+    hasActiveLiveSession: activeLiveSession !== null,
+    isCurrentUserLive: activeLiveSession?.broadcaster_id === user?.id,
   };
 };

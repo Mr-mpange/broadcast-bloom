@@ -30,7 +30,15 @@ interface LiveShowManagerProps {
 const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
   const { toast } = useToast();
   const { liveShows, startLiveShow, endLiveShow, loading } = useLiveShows();
-  const { startBroadcastSession, endBroadcastSession, isLive, canBroadcast } = useBroadcastControl();
+  const { 
+    startBroadcastSession, 
+    endBroadcastSession, 
+    isLive, 
+    canBroadcast, 
+    activeLiveSession,
+    hasActiveLiveSession,
+    isCurrentUserLive 
+  } = useBroadcastControl();
   const [selectedShowId, setSelectedShowId] = useState("");
   const [starting, setStarting] = useState(false);
   const [ending, setEnding] = useState<string | null>(null);
@@ -42,6 +50,16 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
       toast({
         title: "Not Authorized",
         description: "You don't have permission to start a live broadcast.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if there's already an active live session
+    if (hasActiveLiveSession && !isCurrentUserLive) {
+      toast({
+        title: "Live Session Already Active",
+        description: `${activeLiveSession?.broadcaster_name} is currently live. Please wait for their session to end.`,
         variant: "destructive"
       });
       return;
@@ -166,6 +184,31 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Active Live Session Warning */}
+        {hasActiveLiveSession && !isCurrentUserLive && (
+          <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-destructive rounded-full animate-pulse" />
+                <Badge variant="destructive" className="gap-1">
+                  LIVE
+                </Badge>
+              </div>
+              <div>
+                <p className="font-medium text-foreground">
+                  {activeLiveSession?.broadcaster_name} is currently live
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Started {activeLiveSession?.started_at ? new Date(activeLiveSession.started_at).toLocaleTimeString() : 'recently'}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              Only one live broadcast can be active at a time. Please wait for the current session to end.
+            </p>
+          </div>
+        )}
+
         {/* Start New Live Show */}
         <div className="space-y-4">
           <h3 className="font-semibold text-foreground">Start Live Show</h3>
@@ -201,7 +244,7 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
             </Select>
             <Button
               onClick={handleStartShow}
-              disabled={!selectedShowId || starting}
+              disabled={!selectedShowId || starting || (hasActiveLiveSession && !isCurrentUserLive)}
               className="gap-2"
             >
               <Play size={16} />
@@ -210,7 +253,10 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
           </div>
           {availableShows.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              No shows available to go live. All active shows are already broadcasting.
+              {hasActiveLiveSession && !isCurrentUserLive 
+                ? "Cannot start new shows while another DJ is live."
+                : "No shows available to go live. All active shows are already broadcasting."
+              }
             </p>
           )}
         </div>
