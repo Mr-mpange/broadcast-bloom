@@ -9,7 +9,11 @@ interface LiveShow {
   description: string | null;
   genre: string | null;
   host_id: string;
-  is_live?: boolean; // We'll simulate this
+  is_live?: boolean;
+  session_id?: string;
+  host?: {
+    display_name: string;
+  };
 }
 
 export const useLiveShows = () => {
@@ -44,52 +48,58 @@ export const useLiveShows = () => {
     try {
       // First, check for active broadcast sessions
       const { data: activeSessions, error: sessionsError } = await supabase
-        .from('broadcast_sessions')
+        .from('broadcast_sessions' as any)
         .select(`
           id,
           broadcaster_id,
           status,
-          started_at,
-          profiles!broadcast_sessions_broadcaster_id_fkey (
-            id,
-            display_name
-          )
+          started_at
         `)
         .eq('status', 'active');
 
       if (!sessionsError && activeSessions && activeSessions.length > 0) {
-        // Get shows for active broadcasters
-        const broadcasterIds = activeSessions.map(session => session.broadcaster_id);
+        // Get profiles for active broadcasters
+        const broadcasterIds = (activeSessions as any[]).map((session: any) => session.broadcaster_id);
         
-        const { data: shows, error: showsError } = await supabase
-          .from('shows')
-          .select('*')
-          .in('host_id', broadcasterIds);
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, user_id, display_name')
+          .in('user_id', broadcasterIds);
 
-        if (!showsError && shows) {
-          // Create live shows from active sessions
-          const liveShowsData = activeSessions.map(session => {
-            const show = shows.find(s => s.host_id === session.broadcaster_id);
-            const profile = session.profiles;
-            
-            return {
-              id: show?.id || `session_${session.id}`,
-              name: show?.name || `Live with ${profile?.display_name || 'DJ'}`,
-              image_url: show?.image_url || null,
-              description: show?.description || null,
-              genre: show?.genre || null,
-              host_id: session.broadcaster_id,
-              is_live: true,
-              session_id: session.id,
-              host: {
-                display_name: profile?.display_name || 'DJ'
-              }
-            };
-          });
+        if (!profilesError && profiles) {
+          // Get shows for active broadcasters
+          const profileIds = profiles.map(p => p.id);
+          
+          const { data: shows, error: showsError } = await supabase
+            .from('shows')
+            .select('*')
+            .in('host_id', profileIds);
 
-          setLiveShows(liveShowsData);
-          setLoading(false);
-          return;
+          if (!showsError) {
+            // Create live shows from active sessions
+            const liveShowsData = (activeSessions as any[]).map((session: any) => {
+              const profile = profiles.find(p => p.user_id === session.broadcaster_id);
+              const show = shows?.find(s => s.host_id === profile?.id);
+              
+              return {
+                id: show?.id || `session_${session.id}`,
+                name: show?.name || `Live with ${profile?.display_name || 'DJ'}`,
+                image_url: show?.image_url || null,
+                description: show?.description || null,
+                genre: show?.genre || null,
+                host_id: profile?.id || session.broadcaster_id,
+                is_live: true,
+                session_id: session.id,
+                host: {
+                  display_name: profile?.display_name || 'DJ'
+                }
+              };
+            });
+
+            setLiveShows(liveShowsData);
+            setLoading(false);
+            return;
+          }
         }
       }
 

@@ -80,21 +80,30 @@ const ShowDetail = () => {
           description,
           genre,
           image_url,
+          host_id,
           is_active,
-          created_at,
-          host:profiles!shows_host_id_fkey (
-            display_name,
-            avatar_url,
-            bio
-          )
+          created_at
         `)
         .eq("id", id)
         .maybeSingle();
 
       if (showError) {
         console.error("Error fetching show:", showError);
-      } else {
-        setShow(showData as unknown as Show);
+      } else if (showData) {
+        // Fetch host profile separately
+        const { data: hostProfile } = await supabase
+          .from("profiles")
+          .select("display_name, avatar_url, bio")
+          .eq("id", showData.host_id)
+          .maybeSingle();
+
+        // Combine show data with host profile
+        const combinedShowData = {
+          ...showData,
+          host: hostProfile
+        };
+
+        setShow(combinedShowData as unknown as Show);
       }
 
       const { data: scheduleData, error: scheduleError } = await supabase

@@ -1,13 +1,30 @@
 # PULSE FM - Apache Configuration for mpanges.com
 
+# CRITICAL: Set correct MIME types FIRST
+<IfModule mod_mime.c>
+    AddType application/javascript .js
+    AddType application/javascript .mjs
+    AddType text/css .css
+    AddType image/svg+xml .svg
+    AddType application/font-woff .woff
+    AddType application/font-woff2 .woff2
+    AddType application/manifest+json .webmanifest
+    AddType application/json .json
+</IfModule>
+
 # Enable URL Rewriting
 RewriteEngine On
 
-# Handle Angular and React Router
-# Send all requests to index.html for client-side routing
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule . /index.html [L]
+# Serve static files first - CRITICAL for Vite builds
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^.*$ - [L]
+
+# Serve static directories
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^.*$ - [L]
+
+# Handle React Router for everything else
+RewriteRule ^(.*)$ /index.html [L]
 
 # Force HTTPS for mpanges.com
 RewriteCond %{HTTPS} off
@@ -130,28 +147,10 @@ RewriteRule ^(.*)$ https://mpanges.com/$1 [L,R=301]
 ErrorDocument 404 /index.html
 ErrorDocument 500 /index.html
 
-# MIME Types for modern web files
-<IfModule mod_mime.c>
-    AddType application/javascript .js
-    AddType text/css .css
-    AddType image/svg+xml .svg
-    AddType application/font-woff .woff
-    AddType application/font-woff2 .woff2
-    AddType application/manifest+json .webmanifest
-    AddType audio/mpeg .mp3
-    AddType audio/wav .wav
-    AddType audio/ogg .ogg
-    AddType audio/mp4 .m4a
-    AddType audio/flac .flac
-</IfModule>
-
 # Performance optimizations for mpanges.com
 <IfModule mod_headers.c>
     # Add Vary header for proper caching
     Header append Vary Accept-Encoding
-    
-    # Preload critical resources
-    Header add Link "</assets/fonts/inter.woff2>; rel=preload; as=font; type=font/woff2; crossorigin"
     
     # DNS prefetch for external resources
     Header add Link "<https://fonts.googleapis.com>; rel=dns-prefetch"
