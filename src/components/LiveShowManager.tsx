@@ -9,9 +9,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useLiveShows } from "@/hooks/useLiveShows";
 import { useBroadcastControl } from "@/hooks/useBroadcastControl";
-import { Radio, Play, Square, Clock } from "lucide-react";
+import { useRecordingAPI } from "@/hooks/useRecordingAPI";
+import { Radio, Play, Square, Clock, Mic } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Show {
@@ -39,9 +42,88 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
     hasActiveLiveSession,
     isCurrentUserLive 
   } = useBroadcastControl();
+  const { uploadRecording, uploading } = useRecordingAPI();
+  
   const [selectedShowId, setSelectedShowId] = useState("");
   const [starting, setStarting] = useState(false);
   const [ending, setEnding] = useState<string | null>(null);
+  const [recordSession, setRecordSession] = useState(true);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
+
+  // Start recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        } 
+      });
+      
+      const recorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+      
+      const chunks: Blob[] = [];
+      
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+      
+      recorder.onstop = () => {
+        setRecordedChunks(chunks);
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      recorder.start(1000); // Collect data every second
+      setMediaRecorder(recorder);
+      setRecordedChunks([]);
+      
+      console.log('Recording started');
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      toast({
+        title: "Recording Error",
+        description: "Could not access microphone for recording",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Stop recording and save
+  const stopRecording = async (sessionId: string, showTitle: string, djName: string) => {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+      return;
+    }
+    
+    return new Promise<void>((resolve) => {
+      mediaRecorder.onstop = async () => {
+        try {
+          // Create audio blob from recorded chunks
+          const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
+          
+          if (audioBlob.size > 0) {
+            // Upload to PHP API
+            await uploadRecording(audioBlob, sessionId, djName, showTitle);
+          }
+          
+          setRecordedChunks([]);
+          setMediaRecorder(null);
+          resolve();
+        } catch (error) {
+          console.error('Error saving recording:', error);
+          resolve();
+        }
+      };
+      
+      mediaRecorder.stop();
+    });
+  };
 
   const handleStartShow = async () => {
     if (!selectedShowId) return;
@@ -73,9 +155,17 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
       if (sessionId) {
         // Then start the live show
         await startLiveShow(selectedShowId);
+        
+        // Start recording if enabled
+        if (recordSession) {
+          await startRecording();
+        }
+        
         toast({
           title: "Live broadcast started!",
-          description: "Your show is now live and visible to listeners."
+          description: recordSession 
+            ? "Your show is now live and being recorded." 
+            : "Your show is now live and visible to listeners."
         });
       }
     } catch (error) {
@@ -93,7 +183,17 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
   const handleEndShow = async (liveShowId: string) => {
     setEnding(liveShowId);
     try {
-      // End the broadcast session first
+      // Get show info for recording
+      const liveShow = liveShows.find(show => show.id === liveShowId);
+      const showTitle = liveShow?.name || 'Live Recording';
+      const djName = liveShow?.host?.display_name || 'DJ';
+      
+      // Stop recording first if it's active
+      if (mediaRecorder && recordSession) {
+        await stopRecording(liveShowId, showTitle, djName);
+      }
+      
+      // End the broadcast session
       await endBroadcastSession();
       
       // Then end the live show
@@ -101,7 +201,9 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
       
       toast({
         title: "Broadcast ended",
-        description: "Your live show has ended."
+        description: recordSession 
+          ? "Your live show has ended and recording has been saved." 
+          : "Your live show has ended."
       });
     } catch (error) {
       console.error('Error ending show:', error);
@@ -212,6 +314,20 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
         {/* Start New Live Show */}
         <div className="space-y-4">
           <h3 className="font-semibold text-foreground">Start Live Show</h3>
+          
+          {/* Recording Option */}
+          <div className="flex items-center space-x-2 p-3 rounded-lg bg-muted/20 border border-border/30">
+            <Switch
+              id="record-session"
+              checked={recordSession}
+              onCheckedChange={setRecordSession}
+            />
+            <Label htmlFor="record-session" className="flex items-center gap-2 cursor-pointer">
+              <Mic className="h-4 w-4" />
+              Record this session
+            </Label>
+          </div>
+          
           <div className="flex gap-3">
             <Select value={selectedShowId} onValueChange={setSelectedShowId}>
               <SelectTrigger className="flex-1">
@@ -244,11 +360,11 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
             </Select>
             <Button
               onClick={handleStartShow}
-              disabled={!selectedShowId || starting || (hasActiveLiveSession && !isCurrentUserLive)}
+              disabled={!selectedShowId || starting || (hasActiveLiveSession && !isCurrentUserLive) || uploading}
               className="gap-2"
             >
               <Play size={16} />
-              {starting ? "Starting..." : "Go Live"}
+              {starting ? "Starting..." : uploading ? "Saving..." : "Go Live"}
             </Button>
           </div>
           {availableShows.length === 0 && (
