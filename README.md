@@ -50,6 +50,204 @@ A modern, full-featured radio broadcasting platform built for professional DJs, 
 - **Featured Shows** - Database-driven featured content
 - **Image Upload** - Supabase storage integration for all media
 
+## 🎛️ Hardware Setup Guide
+
+### Professional Audio Recording Setup
+
+This guide helps you set up hardware mixer recording to capture complete radio shows (music + voice).
+
+#### Step 1: Install Virtual Audio Cable Software
+
+##### Windows (Free)
+1. **Download VB-Audio Virtual Cable**
+   - Visit: https://vb-audio.com/Cable/
+   - Download "CABLE_A+B" (supports multiple cables)
+   - Run installer as Administrator
+   - **Restart computer** after installation
+
+2. **Verify Installation**
+   - Open Windows Sound Settings
+   - Look for new devices: "CABLE Input" and "CABLE Output"
+   - If not visible, restart computer again
+
+##### Mac (Free)
+1. **Download BlackHole**
+   - Visit: https://github.com/ExistentialAudio/BlackHole
+   - Download latest release (.pkg file)
+   - Install with Administrator privileges
+   - **Restart computer** after installation
+
+2. **Verify Installation**
+   - Open Audio MIDI Setup (Applications → Utilities)
+   - Look for "BlackHole 2ch" or "BlackHole 16ch"
+   - Create Multi-Output Device if needed
+
+##### Linux (Free)
+1. **Install PulseAudio Virtual Sink**
+   ```bash
+   # Ubuntu/Debian
+   sudo apt install pulseaudio pavucontrol
+   
+   # Create virtual sink
+   pactl load-module module-null-sink sink_name=virtual_cable
+   ```
+
+#### Step 2: Hardware Connection Setup
+
+##### Basic Setup
+```
+🎛️ DJ Mixer → 🔌 Audio Interface → 💻 Computer → 🌐 Browser
+```
+
+##### Detailed Connection Flow
+1. **DJ Mixer Output**
+   - Connect mixer's MAIN OUT or REC OUT
+   - Use RCA, XLR, or 1/4" cables
+   - Ensure output level is appropriate
+
+2. **Audio Interface Input**
+   - Connect to Line Input (not Mic Input)
+   - Set input gain appropriately
+   - Monitor levels to avoid clipping
+
+3. **Computer USB Connection**
+   - Connect audio interface via USB/Firewire
+   - Install interface drivers if needed
+   - Verify interface appears in system
+
+#### Step 3: Audio Routing Configuration
+
+##### Windows Setup
+1. **Set Default Recording Device**
+   - Right-click speaker icon → "Open Sound settings"
+   - Input → Choose "CABLE Output" as default
+   - Set levels to 70-80%
+
+2. **Configure Audio Interface**
+   - Open interface control software
+   - Route hardware input → Virtual Cable
+   - Enable direct monitoring if available
+
+##### Mac Setup
+1. **Create Multi-Output Device**
+   - Open Audio MIDI Setup
+   - Click "+" → "Create Multi-Output Device"
+   - Select BlackHole + Built-in Output
+   - Set as system default
+
+2. **Configure Input Routing**
+   - Set BlackHole as input device
+   - Route audio interface → BlackHole
+   - Test with Audio MIDI Setup
+
+#### Step 4: Software Configuration
+
+##### Browser Audio Settings
+1. **Chrome/Edge**
+   - Go to Settings → Privacy and Security → Site Settings
+   - Microphone → Allow sites to access microphone
+   - Select virtual cable as default device
+
+2. **Firefox**
+   - Go to Preferences → Privacy & Security
+   - Permissions → Microphone → Settings
+   - Allow access and select virtual cable
+
+##### PULSE FM Configuration
+1. **Open Audio Device Selector**
+   - Go to DJ Dashboard
+   - Find "Audio Input Selection" panel
+   - Click "Refresh" to detect devices
+
+2. **Select Virtual Cable**
+   - Choose "CABLE Output" (Windows) or "BlackHole" (Mac)
+   - Click "Test" to verify audio signal
+   - Should show audio levels when mixer is playing
+
+#### Step 5: Testing Your Setup
+
+##### Audio Signal Test
+1. **Play Test Audio**
+   - Play music on your DJ mixer
+   - Speak into microphone
+   - Check all sources are audible
+
+2. **Browser Test**
+   - Open PULSE FM in browser
+   - Go to Audio Device Selector
+   - Select virtual cable device
+   - Click "Test" - should detect audio levels
+
+3. **Recording Test**
+   - Start a short live session
+   - Enable "Record this session"
+   - Play music and speak
+   - End session and check recording quality
+
+##### Troubleshooting Common Issues
+
+**No Audio Detected**
+- Check all cable connections
+- Verify mixer output levels
+- Ensure audio interface drivers installed
+- Check virtual cable is selected in browser
+
+**Audio Distorted/Clipping**
+- Reduce mixer output level
+- Lower audio interface input gain
+- Check for digital clipping indicators
+- Adjust virtual cable levels
+
+**Latency Issues**
+- Use ASIO drivers (Windows)
+- Reduce buffer sizes in interface software
+- Close unnecessary audio applications
+- Use dedicated audio interface
+
+**Browser Permission Denied**
+- Allow microphone access in browser
+- Check system privacy settings
+- Try different browser
+- Restart browser after device changes
+
+#### Step 6: Professional Tips
+
+##### Optimal Audio Quality
+- **Sample Rate:** 44.1kHz or 48kHz
+- **Bit Depth:** 16-bit minimum, 24-bit preferred
+- **Recording Format:** WebM/Opus for best compression
+- **Levels:** Peak around -6dB to -3dB
+
+##### Backup Recording
+- Always monitor recording levels
+- Keep backup recording on mixer if available
+- Test recording setup before live shows
+- Have fallback microphone ready
+
+##### Performance Optimization
+- Close unnecessary applications during recording
+- Use dedicated computer for broadcasting
+- Ensure stable internet connection
+- Monitor CPU usage during live sessions
+
+### Hardware Recommendations
+
+#### Budget Setup ($100-300)
+- **Audio Interface:** Behringer U-Phoria UM2
+- **Virtual Cable:** VB-Audio Cable (free)
+- **Mixer:** Any mixer with RCA/1/4" output
+
+#### Professional Setup ($300-1000)
+- **Audio Interface:** Focusrite Scarlett 2i2 or PreSonus AudioBox
+- **Virtual Cable:** VB-Audio Cable + Voicemeeter
+- **Mixer:** Pioneer DJM series or Allen & Heath
+
+#### Broadcast Studio ($1000+)
+- **Audio Interface:** RME Babyface or MOTU M4
+- **Virtual Cable:** Professional routing software
+- **Mixer:** Professional broadcast mixer
+- **Monitoring:** Studio monitors + headphones
+
 ## 🚀 Quick Start
 
 ### Prerequisites

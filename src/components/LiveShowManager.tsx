@@ -51,20 +51,52 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
 
-  // Start recording
+  // Start recording with hardware mixer support
   const startRecording = async () => {
     try {
+      // Get available audio devices
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter(device => device.kind === 'audioinput');
+      
+      // Look for virtual cable or audio interface
+      const virtualCable = audioInputs.find(device => 
+        device.label.toLowerCase().includes('cable') ||
+        device.label.toLowerCase().includes('virtual') ||
+        device.label.toLowerCase().includes('mixer') ||
+        device.label.toLowerCase().includes('interface')
+      );
+      
+      // Audio constraints for professional recording
+      const audioConstraints = {
+        echoCancellation: false,    // Keep mixer's processing
+        noiseSuppression: false,    // Preserve original audio
+        autoGainControl: false,     // Use mixer's gain control
+        sampleRate: 44100,          // CD quality
+        channelCount: 2,            // Stereo
+        sampleSize: 16,             // 16-bit depth
+        // Use virtual cable if available, otherwise default mic
+        deviceId: virtualCable ? { exact: virtualCable.deviceId } : undefined
+      };
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 44100
-        } 
+        audio: audioConstraints
       });
       
-      const recorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
+      // Enhanced MediaRecorder for better quality
+      const options = {
+        mimeType: 'audio/webm;codecs=opus',
+        audioBitsPerSecond: 128000  // 128kbps for good quality
+      };
+      
+      // Fallback for different browsers
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options.mimeType = 'audio/webm';
+      }
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options.mimeType = 'audio/mp4';
+      }
+      
+      const recorder = new MediaRecorder(stream, options);
       
       const chunks: Blob[] = [];
       
@@ -76,7 +108,7 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
       
       recorder.onstop = () => {
         setRecordedChunks(chunks);
-        // Stop all tracks to release microphone
+        // Stop all tracks to release audio device
         stream.getTracks().forEach(track => track.stop());
       };
       
@@ -84,12 +116,31 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
       setMediaRecorder(recorder);
       setRecordedChunks([]);
       
-      console.log('Recording started');
+      // Show recording status with device info
+      const deviceName = virtualCable ? virtualCable.label : 'Default Microphone';
+      console.log(`🔴 Recording started with: ${deviceName}`);
+      
+      toast({
+        title: "Recording Started",
+        description: `Capturing audio from: ${deviceName}`,
+      });
+      
     } catch (error) {
       console.error('Error starting recording:', error);
+      
+      // Provide helpful error messages
+      let errorMessage = "Could not access audio device";
+      if (error.name === 'NotFoundError') {
+        errorMessage = "No audio input device found. Please connect your mixer or enable virtual audio cable.";
+      } else if (error.name === 'NotAllowedError') {
+        errorMessage = "Microphone access denied. Please allow audio permissions.";
+      } else if (error.name === 'NotReadableError') {
+        errorMessage = "Audio device is busy. Please close other audio applications.";
+      }
+      
       toast({
         title: "Recording Error",
-        description: "Could not access microphone for recording",
+        description: errorMessage,
         variant: "destructive"
       });
     }
