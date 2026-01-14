@@ -38,7 +38,11 @@ const HardwareMixerControl = ({ onMixerConnect, onHardwareControl }: HardwareMix
 
   // Hardware connection detection
   useEffect(() => {
-    detectHardwareMixer();
+    const initHardware = async () => {
+      await detectHardwareMixer();
+    };
+    initHardware();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const detectHardwareMixer = async () => {
@@ -86,7 +90,7 @@ const HardwareMixerControl = ({ onMixerConnect, onHardwareControl }: HardwareMix
         }
       }
 
-      // Check for Audio devices (USB mixers)
+      // Check for Audio devices (USB mixers) - NON-EXCLUSIVE MODE
       if (navigator.mediaDevices) {
         try {
           const devices = await navigator.mediaDevices.enumerateDevices();
@@ -100,18 +104,44 @@ const HardwareMixerControl = ({ onMixerConnect, onHardwareControl }: HardwareMix
           );
           
           if (mixerDevice) {
-            setIsConnected(true);
-            setMixerModel(mixerDevice.label);
-            setConnectionType('audio');
-            
-            toast({
-              title: "Audio Mixer Detected!",
-              description: `Found ${mixerDevice.label}`,
-            });
-            
-            onMixerConnect?.(true);
-            setIsScanning(false);
-            return;
+            // Test connection with shared access (non-exclusive)
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                  deviceId: { exact: mixerDevice.deviceId },
+                  echoCancellation: false,
+                  noiseSuppression: false,
+                  autoGainControl: false,
+                  // Request shared access mode
+                  channelCount: 2,
+                  sampleRate: 48000
+                }
+              });
+              
+              // Successfully got stream - store it for later use
+              // Don't close it immediately to maintain shared access
+              (window as Window & { __mixerStream?: MediaStream }).__mixerStream = stream;
+              
+              setIsConnected(true);
+              setMixerModel(mixerDevice.label);
+              setConnectionType('audio');
+              
+              toast({
+                title: "Audio Mixer Connected!",
+                description: `Connected to ${mixerDevice.label} in shared mode`,
+              });
+              
+              onMixerConnect?.(true);
+              setIsScanning(false);
+              return;
+            } catch (streamError) {
+              console.error('Failed to get audio stream:', streamError);
+              toast({
+                title: "Mixer Access Blocked",
+                description: "Mixer is being used exclusively by another application. Close other audio software and try again.",
+                variant: "destructive",
+              });
+            }
           }
         } catch (audioError) {
           console.log('Audio device access failed:', audioError);
@@ -141,8 +171,8 @@ const HardwareMixerControl = ({ onMixerConnect, onHardwareControl }: HardwareMix
     }
   };
 
-  const setupMIDIListeners = (midiInput: any) => {
-    midiInput.onmidimessage = (message: any) => {
+  const setupMIDIListeners = (midiInput: MIDIInput) => {
+    midiInput.onmidimessage = (message: MIDIMessageEvent) => {
       const [command, control, value] = message.data;
       
       // Parse MIDI control changes (CC messages)

@@ -14,6 +14,8 @@ import LocalAudioPlayer from "@/components/LocalAudioPlayer";
 import BroadcastControlPanel from "@/components/BroadcastControlPanel";
 import GeolocationListenerMap from "@/components/GeolocationListenerMap";
 import HardwareMixerControl from "@/components/HardwareMixerControl";
+import MixerTroubleshootingGuide from "@/components/MixerTroubleshootingGuide";
+import AudioDeviceDiagnostics from "@/components/AudioDeviceDiagnostics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -334,6 +336,10 @@ const DJDashboard = () => {
                 </Card>
                 
                 <HardwareMixerControl />
+                
+                <AudioDeviceDiagnostics />
+                
+                <MixerTroubleshootingGuide />
               </div>
             </TabsContent>
             
