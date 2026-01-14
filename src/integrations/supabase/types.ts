@@ -410,7 +410,7 @@ export type Database = {
       is_admin_or_dj: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      user_role: "admin" | "dj" | "moderator" | "listener"
+      user_role: "admin" | "dj" | "presenter" | "moderator" | "listener"
     }
     CompositeTypes: {
       [_ in never]: never

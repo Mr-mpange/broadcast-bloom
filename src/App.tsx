@@ -12,6 +12,7 @@ import DJDashboard from "./pages/DJDashboard";
 import PresenterDashboard from "./pages/PresenterDashboard";
 import ModeratorDashboard from "./pages/ModeratorDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import UserManagementPage from "./pages/UserManagement";
 import ShowDetail from "./pages/ShowDetail";
 import Shows from "./pages/Shows";
 import Favorites from "./pages/Favorites";
@@ -43,6 +44,10 @@ const router = createBrowserRouter([
   {
     path: "/admin",
     element: <AdminDashboard />,
+  },
+  {
+    path: "/admin/users",
+    element: <UserManagementPage />,
   },
   {
     path: "/shows",
