@@ -152,29 +152,29 @@ const DJDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-4 py-8 pt-24">
-        <div className="flex items-center gap-3 mb-8">
-          <Radio className="h-8 w-8 text-primary" />
-          <h1 className="font-display text-3xl font-bold text-foreground">
+      <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 pt-20 sm:pt-24">
+        <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8">
+          <Radio className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+          <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">
             DJ Dashboard
           </h1>
         </div>
 
         {/* Broadcast Control Panel - Priority Component */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <BroadcastControlPanel />
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-8">
           <Card className="glass-panel border-border/50">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-primary/10">
-                  <Music className="h-6 w-6 text-primary" />
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-xl bg-primary/10">
+                  <Music className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Active Shows</p>
-                  <p className="text-2xl font-bold text-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Active Shows</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">
                     {shows.filter((s) => s.is_active).length}
                   </p>
                 </div>
@@ -183,14 +183,14 @@ const DJDashboard = () => {
           </Card>
 
           <Card className="glass-panel border-border/50">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-secondary/10">
-                  <Users className="h-6 w-6 text-secondary" />
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-xl bg-secondary/10">
+                  <Users className="h-4 w-4 sm:h-6 sm:w-6 text-secondary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Avg. Listeners</p>
-                  <p className="text-2xl font-bold text-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Avg. Listeners</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">
                     {avgListeners.toLocaleString()}
                   </p>
                 </div>
@@ -199,14 +199,14 @@ const DJDashboard = () => {
           </Card>
 
           <Card className="glass-panel border-border/50">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-primary/10">
-                  <Globe className="h-6 w-6 text-primary" />
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-xl bg-primary/10">
+                  <Globe className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Countries</p>
-                  <p className="text-2xl font-bold text-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Countries</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">
                     {uniqueCountries}
                   </p>
                 </div>
@@ -215,14 +215,14 @@ const DJDashboard = () => {
           </Card>
 
           <Card className="glass-panel border-border/50">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-secondary/10">
-                  <TrendingUp className="h-6 w-6 text-secondary" />
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <div className="p-2 sm:p-3 rounded-xl bg-secondary/10">
+                  <TrendingUp className="h-4 w-4 sm:h-6 sm:w-6 text-secondary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Plays</p>
-                  <p className="text-2xl font-bold text-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Total Plays</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">
                     {totalListeners.toLocaleString()}
                   </p>
                 </div>
@@ -311,25 +311,55 @@ const DJDashboard = () => {
         {/* Tabbed Content */}
         <div className="mt-6">
           <Tabs defaultValue="hardware" className="w-full">
-            <TabsList className="grid w-full grid-cols-7">
-              <TabsTrigger value="hardware">Hardware Mixer</TabsTrigger>
-              <TabsTrigger value="broadcast">Broadcast Control</TabsTrigger>
-              <TabsTrigger value="listeners">Live Listeners</TabsTrigger>
-              <TabsTrigger value="shows">Show Management</TabsTrigger>
-              <TabsTrigger value="audio">Local Audio</TabsTrigger>
-              <TabsTrigger value="chat">Live Chat</TabsTrigger>
-              {canManageBlogs && <TabsTrigger value="blogs">Blog Management</TabsTrigger>}
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-1">
+              <TabsTrigger value="hardware" className="text-xs sm:text-sm">
+                <Zap className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Hardware</span>
+                <span className="sm:hidden">Mixer</span>
+              </TabsTrigger>
+              <TabsTrigger value="broadcast" className="text-xs sm:text-sm">
+                <Mic className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Broadcast</span>
+                <span className="sm:hidden">Live</span>
+              </TabsTrigger>
+              <TabsTrigger value="listeners" className="text-xs sm:text-sm">
+                <Users className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Listeners</span>
+                <span className="sm:hidden">Users</span>
+              </TabsTrigger>
+              <TabsTrigger value="shows" className="text-xs sm:text-sm">
+                <Music className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Shows</span>
+                <span className="sm:hidden">Shows</span>
+              </TabsTrigger>
+              <TabsTrigger value="audio" className="text-xs sm:text-sm">
+                <Headphones className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Audio</span>
+                <span className="sm:hidden">Audio</span>
+              </TabsTrigger>
+              <TabsTrigger value="chat" className="text-xs sm:text-sm">
+                <MessageCircle className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Chat</span>
+                <span className="sm:hidden">Chat</span>
+              </TabsTrigger>
+              {canManageBlogs && (
+                <TabsTrigger value="blogs" className="text-xs sm:text-sm col-span-2 sm:col-span-1">
+                  <MessageCircle className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Blogs</span>
+                  <span className="sm:hidden">Blog</span>
+                </TabsTrigger>
+              )}
             </TabsList>
             
             <TabsContent value="hardware" className="mt-6">
               <div className="space-y-6">
                 <Card className="glass-panel border-border/50">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-primary" />
+                    <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                      <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                       Hardware Mixer Control
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Connect and control your physical DJ mixer hardware for live broadcasting
                     </p>
                   </CardHeader>
@@ -347,11 +377,11 @@ const DJDashboard = () => {
               <div className="grid gap-6">
                 <Card className="glass-panel border-border/50">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Mic className="h-5 w-5 text-primary" />
+                    <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                      <Mic className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                       Professional Broadcasting Controls
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Full control panel for live broadcasting with role-based permissions, microphone control, and emergency override capabilities
                     </p>
                   </CardHeader>
@@ -364,11 +394,11 @@ const DJDashboard = () => {
               <div className="grid gap-6">
                 <Card className="glass-panel border-border/50">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Globe className="h-5 w-5 text-primary" />
+                    <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                      <Globe className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                       Real-Time Listener Tracking
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Live geolocation-based listener statistics and geographic distribution
                     </p>
                   </CardHeader>
@@ -392,11 +422,11 @@ const DJDashboard = () => {
               <div className="grid gap-6">
                 <Card className="glass-panel border-border/50">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Headphones className="h-5 w-5 text-primary" />
+                    <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                      <Headphones className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                       Play Audio from Your PC
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Upload and play audio files directly from your computer for live broadcasting
                     </p>
                   </CardHeader>
@@ -410,17 +440,17 @@ const DJDashboard = () => {
               <div className="grid gap-6">
                 <Card className="glass-panel border-border/50">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <MessageCircle className="h-5 w-5 text-primary" />
+                    <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                      <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                       Interact with Your Listeners
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Chat with your audience in real-time during your live broadcast
                     </p>
                   </CardHeader>
                 </Card>
                 
-                <div className="h-[600px]">
+                <div className="h-[500px] sm:h-[600px]">
                   <LiveChat className="h-full" />
                 </div>
               </div>

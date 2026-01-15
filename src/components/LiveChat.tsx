@@ -340,48 +340,56 @@ const LiveChat = ({ showId, className = "" }: LiveChatProps) => {
                 </p>
               </div>
             ) : (
-              messages.map((message) => (
-                <div key={message.id} className="group">
-                  {message.reply_to && (
-                    <div className="ml-10 mb-1 text-xs text-muted-foreground border-l-2 border-muted pl-2">
-                      Replying to {message.reply_username}
-                    </div>
-                  )}
-                  <div className="flex items-start gap-2">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-medium text-primary">
-                        {message.username.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm text-foreground">
-                          {message.username}
-                        </span>
-                        {message.user_id && (
-                          <Badge variant="outline" className="text-xs px-1 py-0">
-                            Verified
-                          </Badge>
-                        )}
-                        <span className="text-xs text-muted-foreground">
-                          {formatMessageTime(message.created_at)}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
-                          onClick={() => handleReply(message)}
-                        >
-                          <Reply size={12} />
-                        </Button>
+              messages.map((message) => {
+                const isOwnMessage = user && message.user_id === user.id;
+                
+                return (
+                  <div key={message.id} className={`group ${isOwnMessage ? 'flex justify-end' : ''}`}>
+                    {message.reply_to && (
+                      <div className={`mb-1 text-xs text-muted-foreground border-l-2 border-muted pl-2 ${isOwnMessage ? 'mr-10 text-right border-r-2 border-l-0 pr-2 pl-0' : 'ml-10'}`}>
+                        Replying to {message.reply_username}
                       </div>
-                      <p className="text-sm text-foreground break-words">
-                        {message.message}
-                      </p>
+                    )}
+                    <div className={`flex items-start gap-2 max-w-[80%] ${isOwnMessage ? 'flex-row-reverse' : ''}`}>
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-medium text-primary">
+                          {message.username.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className={`flex-1 min-w-0 ${isOwnMessage ? 'items-end' : ''}`}>
+                        <div className={`flex items-center gap-2 mb-1 ${isOwnMessage ? 'flex-row-reverse' : ''}`}>
+                          <span className="font-medium text-sm text-foreground">
+                            {isOwnMessage ? 'You' : message.username}
+                          </span>
+                          {message.user_id && (
+                            <Badge variant="outline" className="text-xs px-1 py-0">
+                              Verified
+                            </Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            {formatMessageTime(message.created_at)}
+                          </span>
+                          {!isOwnMessage && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+                              onClick={() => handleReply(message)}
+                            >
+                              <Reply size={12} />
+                            </Button>
+                          )}
+                        </div>
+                        <div className={`rounded-lg p-3 ${isOwnMessage ? 'bg-primary text-primary-foreground' : 'bg-muted/50'}`}>
+                          <p className="text-sm break-words">
+                            {message.message}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
             <div ref={messagesEndRef} />
           </div>

@@ -221,11 +221,11 @@ const ShowManagement = ({ shows, profileId, onShowsChange }: ShowManagementProps
                 New Show
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Show</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 pt-4">
+              <div className="space-y-4 pt-4 pb-2">
                 <div>
                   <Label>Show Name *</Label>
                   <Input
@@ -346,11 +346,11 @@ const ShowManagement = ({ shows, profileId, onShowsChange }: ShowManagementProps
 
         {/* Edit Dialog */}
         <Dialog open={!!editingShow} onOpenChange={(open) => !open && setEditingShow(null)}>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Show</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 pt-4">
+            <div className="space-y-4 pt-4 pb-2">
               <div>
                 <Label>Show Name *</Label>
                 <Input
@@ -396,11 +396,11 @@ const ShowManagement = ({ shows, profileId, onShowsChange }: ShowManagementProps
 
         {/* Schedule Dialog */}
         <Dialog open={!!scheduleShow} onOpenChange={(open) => !open && setScheduleShow(null)}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Schedule: {scheduleShow?.name}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 pt-4">
+            <div className="space-y-4 pt-4 pb-2">
               {/* Existing slots */}
               {scheduleSlots.length > 0 && (
                 <div className="space-y-2">

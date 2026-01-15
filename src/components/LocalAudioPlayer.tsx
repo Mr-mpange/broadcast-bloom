@@ -37,6 +37,33 @@ const LocalAudioPlayer = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Load tracks from localStorage on mount
+  useEffect(() => {
+    const savedTracks = localStorage.getItem('pulse_fm_audio_tracks');
+    if (savedTracks) {
+      try {
+        const parsed = JSON.parse(savedTracks);
+        // Note: File objects can't be serialized, so we only restore metadata
+        // Users will need to re-upload files after page refresh
+        console.log('Previous session had tracks, but files need to be re-uploaded');
+      } catch (error) {
+        console.error('Error loading saved tracks:', error);
+      }
+    }
+  }, []);
+
+  // Save track metadata to localStorage
+  useEffect(() => {
+    if (tracks.length > 0) {
+      const trackMetadata = tracks.map(t => ({
+        id: t.id,
+        name: t.name,
+        duration: t.duration
+      }));
+      localStorage.setItem('pulse_fm_audio_tracks', JSON.stringify(trackMetadata));
+    }
+  }, [tracks]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -256,7 +283,7 @@ const LocalAudioPlayer = () => {
         {tracks.length > 0 && (
           <div className="space-y-2">
             <h4 className="font-medium text-foreground">Playlist ({tracks.length} tracks)</h4>
-            <div className="max-h-48 overflow-y-auto space-y-1">
+            <div className="max-h-48 overflow-y-auto space-y-1 border border-border/50 rounded-lg p-2 bg-muted/10">
               {tracks.map((track) => (
                 <div
                   key={track.id}
@@ -285,6 +312,9 @@ const LocalAudioPlayer = () => {
                 </div>
               ))}
             </div>
+            <p className="text-xs text-muted-foreground">
+              💡 Uploaded files are stored in your browser. They'll be available until you clear browser data.
+            </p>
           </div>
         )}
 

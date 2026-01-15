@@ -21,27 +21,19 @@ export const useLiveShows = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  // Load live shows from localStorage on mount
+  // Fetch live shows on mount and subscribe to real-time updates
   useEffect(() => {
-    const savedLiveShows = localStorage.getItem('pulse_fm_live_shows');
-    if (savedLiveShows) {
-      try {
-        const parsed = JSON.parse(savedLiveShows);
-        setLiveShows(Array.isArray(parsed) ? parsed : []);
-      } catch (error) {
-        console.error('Error loading saved live shows:', error);
-        setLiveShows([]);
-      }
-    }
-    
     fetchLiveShows();
-    subscribeToLiveShows();
+    const unsubscribe = subscribeToLiveShows();
+    
+    // Poll every 30 seconds as backup
+    const interval = setInterval(fetchLiveShows, 30000);
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+      clearInterval(interval);
+    };
   }, []);
-
-  // Save live shows to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('pulse_fm_live_shows', JSON.stringify(liveShows));
-  }, [liveShows]);
 
   const fetchLiveShows = async () => {
     setLoading(true);
@@ -153,48 +145,37 @@ export const useLiveShows = () => {
 
   const startLiveShow = async (showId: string) => {
     try {
-      // Simulate starting a live show
-      // In a real app, you'd update a live_status field or create a live_shows record
-      
-      // Find the show to start
-      const { data: showData } = await supabase
-        .from('shows')
-        .select('*')
-        .eq('id', showId)
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Create a broadcast session in the database
+      const { data: session, error: sessionError } = await supabase
+        .from('broadcast_sessions' as any)
+        .insert({
+          broadcaster_id: user.id,
+          status: 'active',
+          started_at: new Date().toISOString()
+        })
+        .select()
         .single();
 
-      if (showData) {
-        const newLiveShow = {
-          id: showData.id,
-          name: showData.name || 'Unknown Show',
-          image_url: showData.image_url || null,
-          description: showData.description || null,
-          genre: showData.genre || null,
-          host_id: showData.host_id || 'unknown',
-          is_live: true
-        };
+      if (sessionError) throw sessionError;
 
-        // Update local state to show as live
-        setLiveShows(prev => {
-          // Remove if already exists, then add to beginning
-          const filtered = prev.filter(s => s.id !== showId);
-          return [newLiveShow, ...filtered];
-        });
+      // Fetch will be triggered by subscription
+      await fetchLiveShows();
 
-        toast({
-          title: "Show is now live!",
-          description: "Listeners will be notified about your live broadcast."
-        });
+      toast({
+        title: "Show is now live!",
+        description: "Listeners will be notified about your live broadcast."
+      });
 
-        return { data: showId };
-      } else {
-        throw new Error('Show not found');
-      }
+      return { data: showId };
     } catch (err: any) {
-      console.error('Unexpected error starting live show:', err);
+      console.error('Error starting live show:', err);
       toast({
         title: "Failed to start live show",
-        description: "An unexpected error occurred",
+        description: err.message || "An unexpected error occurred",
         variant: "destructive"
       });
       return { error: err };
@@ -203,13 +184,24 @@ export const useLiveShows = () => {
 
   const endLiveShow = async (showId: string) => {
     try {
-      // Remove from live shows immediately
-      setLiveShows(prev => {
-        const updated = prev.filter(show => show.id !== showId);
-        // Also update localStorage immediately
-        localStorage.setItem('pulse_fm_live_shows', JSON.stringify(updated));
-        return updated;
-      });
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // End all active broadcast sessions for this user
+      const { error: updateError } = await supabase
+        .from('broadcast_sessions' as any)
+        .update({ 
+          status: 'ended',
+          ended_at: new Date().toISOString()
+        })
+        .eq('broadcaster_id', user.id)
+        .eq('status', 'active');
+
+      if (updateError) throw updateError;
+
+      // Fetch will be triggered by subscription
+      await fetchLiveShows();
 
       toast({
         title: "Show ended",
@@ -218,23 +210,47 @@ export const useLiveShows = () => {
 
       return { success: true };
     } catch (err: any) {
-      console.error('Unexpected error ending live show:', err);
+      console.error('Error ending live show:', err);
       toast({
         title: "Failed to end live show",
-        description: "An unexpected error occurred",
+        description: err.message || "An unexpected error occurred",
         variant: "destructive"
       });
       return { error: err };
     }
   };
 
-  const clearAllLiveShows = () => {
-    setLiveShows([]);
-    localStorage.removeItem('pulse_fm_live_shows');
-    toast({
-      title: "All shows ended",
-      description: "All live broadcasts have been stopped."
-    });
+  const clearAllLiveShows = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // End all active sessions for this user
+      const { error } = await supabase
+        .from('broadcast_sessions' as any)
+        .update({ 
+          status: 'ended',
+          ended_at: new Date().toISOString()
+        })
+        .eq('broadcaster_id', user.id)
+        .eq('status', 'active');
+
+      if (error) throw error;
+
+      await fetchLiveShows();
+
+      toast({
+        title: "All shows ended",
+        description: "All live broadcasts have been stopped."
+      });
+    } catch (err: any) {
+      console.error('Error clearing live shows:', err);
+      toast({
+        title: "Failed to end shows",
+        description: err.message || "An unexpected error occurred",
+        variant: "destructive"
+      });
+    }
   };
 
   return {
