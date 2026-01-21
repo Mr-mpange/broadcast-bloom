@@ -43,7 +43,7 @@ const LocalAudioPlayer = () => {
     const savedTracks = localStorage.getItem('pulse_fm_audio_tracks');
     if (savedTracks) {
       try {
-        const parsed = JSON.parse(savedTracks);
+        JSON.parse(savedTracks);
         // Note: File objects can't be serialized, so we only restore metadata
         // Users will need to re-upload files after page refresh
         console.log('Previous session had tracks, but files need to be re-uploaded');

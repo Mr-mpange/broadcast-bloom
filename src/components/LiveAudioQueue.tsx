@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -472,10 +471,10 @@ const LiveAudioQueue = () => {
     }
 
     // Validate required fields
-    if (!saveMetadata.artist.trim() || !saveMetadata.genre.trim()) {
+    if (!saveMetadata.genre.trim()) {
       toast({
         title: 'Missing Information',
-        description: 'Please fill in both Artist and Genre fields.',
+        description: 'Please select or enter a music genre.',
         variant: 'destructive'
       });
       return;
@@ -511,7 +510,7 @@ const LiveAudioQueue = () => {
         .from('audio_content')
         .insert({
           name: track.name,
-          artist: saveMetadata.artist.trim(),
+          artist: saveMetadata.artist || 'Various Artists',
           file_path: filePath,
           file_size: track.fileSize,
           duration: Math.round(track.duration),
@@ -545,7 +544,7 @@ const LiveAudioQueue = () => {
 
       toast({
         title: 'Track Saved Successfully! 🎵',
-        description: `"${track.name}" by ${saveMetadata.artist} has been added to your audio library.`,
+        description: `"${track.name}" (${saveMetadata.genre}) has been added to your audio library.`,
       });
 
     } catch (error: any) {
@@ -699,14 +698,14 @@ const LiveAudioQueue = () => {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate flex items-center gap-2">
-                        {track.name}
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium truncate">{track.name}</span>
                         {!track.url && (
                           <Badge variant="outline" className="text-xs">
                             Re-upload needed
                           </Badge>
                         )}
-                      </p>
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         Uploaded {getTimeAgo(track.uploadedAt)} • {(track.fileSize / 1024 / 1024).toFixed(1)}MB
                       </p>
@@ -765,154 +764,69 @@ const LiveAudioQueue = () => {
           </Alert>
         )}
 
-        {/* Modern Save to Audio Library Dialog */}
+        {/* Minimal Save Dialog */}
         {showSaveDialog && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
               {/* Header */}
-              <div className="relative bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-5 text-white">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                    <Save className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-semibold">Save to Library</h2>
-                    <p className="text-emerald-100 text-sm">Add this track to your permanent collection</p>
-                  </div>
-                </div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Save Track</h3>
                 <button
                   onClick={() => setShowSaveDialog(null)}
-                  className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  className="text-gray-400 hover:text-gray-600"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  ×
                 </button>
               </div>
 
-              <div className="p-6 space-y-6">
-                {/* Track Preview */}
-                {(() => {
-                  const track = queuedTracks.find(t => t.id === showSaveDialog);
-                  return track ? (
-                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 p-4 border border-gray-200">
-                      <div className="flex items-center gap-4">
-                        <div className="relative">
-                          <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center shadow-lg">
-                            <Music className="h-8 w-8 text-white" />
-                          </div>
-                          <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">♪</span>
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 truncate text-lg">{track.name}</h3>
-                          <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-                            <span className="flex items-center gap-1">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 0h10m-10 0a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2" />
-                              </svg>
-                              {(track.fileSize / 1024 / 1024).toFixed(1)}MB
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              {Math.floor(track.duration / 60)}:{(track.duration % 60).toString().padStart(2, '0')}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : null;
-                })()}
-
-                {/* Form Fields */}
-                <div className="space-y-5">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      Artist Name
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={saveMetadata.artist}
-                      onChange={(e) => setSaveMetadata(prev => ({ ...prev, artist: e.target.value }))}
-                      placeholder="Enter the artist or band name"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 bg-white shadow-sm"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          document.getElementById('genre-input')?.focus();
-                        }
-                      }}
-                    />
+              {/* Track Name */}
+              {(() => {
+                const track = queuedTracks.find(t => t.id === showSaveDialog);
+                return track ? (
+                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <p className="font-medium text-gray-900 truncate">{track.name}</p>
                   </div>
+                ) : null;
+              })()}
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2C7 1.45 7.45 1 8 1h8c.55 0 1 .45 1 1v2m-9 0h10m-10 0C5.9 4 5 4.9 5 6v14c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2" />
-                      </svg>
-                      Music Genre
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="genre-input"
-                      type="text"
-                      value={saveMetadata.genre}
-                      onChange={(e) => setSaveMetadata(prev => ({ ...prev, genre: e.target.value }))}
-                      placeholder="e.g., Pop, Hip Hop, Jazz, Rock, Electronic"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 bg-white shadow-sm"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && saveMetadata.artist.trim() && saveMetadata.genre.trim()) {
-                          saveTrackToDatabase(showSaveDialog);
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
+              {/* Genre Input */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Genre
+                </label>
+                <input
+                  type="text"
+                  value={saveMetadata.genre}
+                  onChange={(e) => setSaveMetadata(prev => ({ ...prev, genre: e.target.value, artist: 'Various Artists' }))}
+                  placeholder="Hip Hop, Pop, Rock, etc."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && saveMetadata.genre.trim()) {
+                      saveTrackToDatabase(showSaveDialog);
+                    }
+                  }}
+                  autoFocus
+                />
+              </div>
 
-                {/* Info Banner */}
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="p-1 bg-blue-100 rounded-lg">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-blue-900 mb-1">What happens next?</h4>
-                      <p className="text-sm text-blue-700">
-                        Your track will be uploaded to secure cloud storage and added to your Audio Content Manager. 
-                        You can then use it in future broadcasts and playlists.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={() => saveTrackToDatabase(showSaveDialog)}
-                    disabled={!saveMetadata.artist.trim() || !saveMetadata.genre.trim()}
-                    className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 hover:from-emerald-600 hover:to-teal-700"
-                  >
-                    <Database className="h-5 w-5" />
-                    Save to Library
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowSaveDialog(null);
-                      setSaveMetadata({ genre: '', artist: '' });
-                    }}
-                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors duration-200"
-                  >
-                    Cancel
-                  </button>
-                </div>
+              {/* Buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => saveTrackToDatabase(showSaveDialog)}
+                  disabled={!saveMetadata.genre.trim()}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSaveDialog(null);
+                    setSaveMetadata({ genre: '', artist: '' });
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>

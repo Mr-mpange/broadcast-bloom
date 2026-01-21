@@ -40,7 +40,7 @@ import {
 
 const DJDashboard = () => {
   const { user, loading: authLoading } = useAuth();
-  const { shows, isDJ, loading, updateNowPlaying, profile, refetchShows } = useDJData();
+  const { shows, loading, updateNowPlaying, profile, refetchShows } = useDJData();
   const { listenerStats } = useGeolocationListeners();
   const { nowPlaying } = useNowPlaying();
   const navigate = useNavigate();
