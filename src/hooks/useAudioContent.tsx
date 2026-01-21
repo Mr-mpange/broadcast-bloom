@@ -60,7 +60,7 @@ export const useAudioContent = () => {
   // Fetch audio content with filters
   const fetchAudioContent = useCallback(async (filters: AudioContentFilters = {}) => {
     try {
-      let query = supabase
+      let query = (supabase as any)
         .from('audio_content')
         .select('*')
         .order('upload_date', { ascending: false });
@@ -92,7 +92,7 @@ export const useAudioContent = () => {
 
       if (error) throw error;
 
-      setAudioContent(data || []);
+      setAudioContent((data as AudioContent[]) || []);
     } catch (error) {
       console.error('Error fetching audio content:', error);
       toast({
@@ -149,7 +149,7 @@ export const useAudioContent = () => {
       }
 
       // Create database record
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('audio_content')
         .insert({
           name: metadata.name,
@@ -173,7 +173,7 @@ export const useAudioContent = () => {
       if (error) throw error;
 
       // Update local state
-      setAudioContent(prev => [data, ...prev]);
+      setAudioContent(prev => [data as AudioContent, ...prev]);
 
       toast({
         title: 'Upload Successful',
@@ -204,7 +204,7 @@ export const useAudioContent = () => {
       setCurrentlyPlaying(content);
 
       // Log play history
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('play_history')
         .insert({
           content_id: content.id,
@@ -247,7 +247,7 @@ export const useAudioContent = () => {
     updates: Partial<AudioContent>
   ) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('audio_content')
         .update(updates)
         .eq('id', contentId)
@@ -258,7 +258,7 @@ export const useAudioContent = () => {
 
       // Update local state
       setAudioContent(prev =>
-        prev.map(item => (item.id === contentId ? { ...item, ...data } : item))
+        prev.map(item => (item.id === contentId ? { ...item, ...(data as AudioContent) } : item))
       );
 
       toast({
@@ -295,7 +295,7 @@ export const useAudioContent = () => {
       }
 
       // Delete from database
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('audio_content')
         .delete()
         .eq('id', contentId);
@@ -325,7 +325,7 @@ export const useAudioContent = () => {
   // Get play history
   const fetchPlayHistory = useCallback(async (limit: number = 50) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('play_history')
         .select(`
           *,
@@ -340,7 +340,7 @@ export const useAudioContent = () => {
 
       if (error) throw error;
 
-      setPlayHistory(data || []);
+      setPlayHistory((data as PlayHistoryEntry[]) || []);
     } catch (error) {
       console.error('Error fetching play history:', error);
     }
@@ -349,7 +349,7 @@ export const useAudioContent = () => {
   // Get content statistics
   const getContentStats = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('audio_content')
         .select('content_type, play_count')
         .eq('is_active', true);
@@ -357,10 +357,11 @@ export const useAudioContent = () => {
       if (error) throw error;
 
       // Calculate stats
+      const audioData = data as AudioContent[];
       const stats = {
-        totalTracks: data?.length || 0,
-        totalPlays: data?.reduce((sum, item) => sum + item.play_count, 0) || 0,
-        byType: data?.reduce((acc, item) => {
+        totalTracks: audioData?.length || 0,
+        totalPlays: audioData?.reduce((sum, item) => sum + (item.play_count || 0), 0) || 0,
+        byType: audioData?.reduce((acc, item) => {
           acc[item.content_type] = (acc[item.content_type] || 0) + 1;
           return acc;
         }, {} as Record<ContentType, number>) || {},

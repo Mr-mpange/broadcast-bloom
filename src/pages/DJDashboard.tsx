@@ -12,6 +12,9 @@ import BlogManagement from "@/components/BlogManagement";
 import LiveChat from "@/components/LiveChat";
 import LocalAudioPlayer from "@/components/LocalAudioPlayer";
 import BroadcastControlPanel from "@/components/BroadcastControlPanel";
+import AudioContentManager from "@/components/AudioContentManager";
+import QuickAudioSetup from "@/components/QuickAudioSetup";
+import LiveAudioQueue from "@/components/LiveAudioQueue";
 import GeolocationListenerMap from "@/components/GeolocationListenerMap";
 import HardwareMixerControl from "@/components/HardwareMixerControl";
 import MixerTroubleshootingGuide from "@/components/MixerTroubleshootingGuide";
@@ -387,6 +390,10 @@ const DJDashboard = () => {
                   </CardHeader>
                 </Card>
                 
+                <QuickAudioSetup />
+                
+                <LiveAudioQueue />
+                
                 <BroadcastControlPanel />
               </div>
             </TabsContent>
@@ -424,7 +431,23 @@ const DJDashboard = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
                       <Headphones className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                      Play Audio from Your PC
+                      Audio Management
+                    </CardTitle>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Manage your station's audio content library and upload files for broadcasting
+                    </p>
+                  </CardHeader>
+                </Card>
+                
+                <AudioContentManager />
+                
+                <LiveAudioQueue />
+                
+                <Card className="glass-panel border-border/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                      <Headphones className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                      Local Audio Player
                     </CardTitle>
                     <p className="text-xs sm:text-sm text-muted-foreground">
                       Upload and play audio files directly from your computer for live broadcasting

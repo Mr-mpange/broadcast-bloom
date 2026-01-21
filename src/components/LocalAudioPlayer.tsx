@@ -33,6 +33,7 @@ const LocalAudioPlayer = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isDragOver, setIsDragOver] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -69,20 +70,39 @@ const LocalAudioPlayer = () => {
     if (!audio) return;
 
     const updateTime = () => setCurrentTime(audio.currentTime);
-    const updateDuration = () => setDuration(audio.duration);
+    const updateDuration = () => {
+      if (audio.duration && !isNaN(audio.duration)) {
+        setDuration(audio.duration);
+      }
+    };
     const handleEnded = () => {
       setIsPlaying(false);
       playNext();
     };
+    const handleError = () => {
+      setIsPlaying(false);
+      toast({
+        title: 'Audio Error',
+        description: 'There was an error playing this audio file.',
+        variant: 'destructive'
+      });
+    };
+    const handleCanPlay = () => {
+      updateDuration();
+    };
 
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateDuration);
+    audio.addEventListener('canplay', handleCanPlay);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
 
     return () => {
       audio.removeEventListener('timeupdate', updateTime);
       audio.removeEventListener('loadedmetadata', updateDuration);
+      audio.removeEventListener('canplay', handleCanPlay);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
     };
   }, [currentTrack]);
 
@@ -92,34 +112,56 @@ const LocalAudioPlayer = () => {
     }
   }, [volume, isMuted]);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
+  const processFiles = (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    const validFiles = fileArray.filter(file => {
+      const validTypes = ['audio/mp3', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/m4a', 'audio/flac', 'audio/x-m4a'];
+      return validTypes.some(type => file.type === type) || file.name.match(/\.(mp3|wav|ogg|m4a|flac)$/i);
+    });
 
-    Array.from(files).forEach((file) => {
-      if (file.type.startsWith('audio/')) {
-        const url = URL.createObjectURL(file);
-        const track: AudioTrack = {
-          id: `track_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-          name: file.name.replace(/\.[^/.]+$/, ''), // Remove extension
-          file,
-          url,
-          duration: 0,
-        };
-        
-        setTracks(prev => [...prev, track]);
-        
-        // If no current track, set this as current
-        if (!currentTrack) {
-          setCurrentTrack(track);
+    if (validFiles.length === 0) {
+      toast({
+        title: 'Invalid file format',
+        description: 'Please upload MP3, WAV, OGG, M4A, or FLAC files only.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    validFiles.forEach((file) => {
+      const url = URL.createObjectURL(file);
+      const track: AudioTrack = {
+        id: `track_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        name: file.name.replace(/\.[^/.]+$/, ''), // Remove extension
+        file,
+        url,
+        duration: 0,
+      };
+      
+      setTracks(prev => [...prev, track]);
+      
+      // If no current track, set this as current and load it
+      if (!currentTrack) {
+        setCurrentTrack(track);
+        // Load the audio to get duration
+        if (audioRef.current) {
+          audioRef.current.src = track.url;
+          audioRef.current.load();
         }
       }
     });
 
     toast({
       title: 'Audio files added!',
-      description: `Added ${files.length} audio file(s) to your playlist.`,
+      description: `Added ${validFiles.length} audio file(s) to your playlist.`,
     });
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    processFiles(files);
 
     // Reset input
     if (fileInputRef.current) {
@@ -127,24 +169,72 @@ const LocalAudioPlayer = () => {
     }
   };
 
-  const playTrack = (track: AudioTrack) => {
-    if (audioRef.current) {
-      audioRef.current.src = track.url;
-      setCurrentTrack(track);
-      audioRef.current.play();
-      setIsPlaying(true);
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      processFiles(files);
     }
   };
 
-  const togglePlay = () => {
-    if (!audioRef.current || !currentTrack) return;
+  const playTrack = async (track: AudioTrack) => {
+    if (audioRef.current) {
+      try {
+        audioRef.current.src = track.url;
+        setCurrentTrack(track);
+        audioRef.current.load(); // Ensure the audio is loaded
+        await audioRef.current.play();
+        setIsPlaying(true);
+      } catch (error) {
+        console.error('Error playing track:', error);
+        toast({
+          title: 'Playback Error',
+          description: 'Unable to play this audio file. Please try another format.',
+          variant: 'destructive'
+        });
+        setIsPlaying(false);
+      }
+    }
+  };
 
-    if (isPlaying) {
-      audioRef.current.pause();
+  const togglePlay = async () => {
+    if (!audioRef.current || !currentTrack) {
+      toast({
+        title: 'No track selected',
+        description: 'Please select an audio track to play.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        await audioRef.current.play();
+        setIsPlaying(true);
+      }
+    } catch (error) {
+      console.error('Error toggling playback:', error);
+      toast({
+        title: 'Playback Error',
+        description: 'Unable to play audio. Please check your browser settings.',
+        variant: 'destructive'
+      });
       setIsPlaying(false);
-    } else {
-      audioRef.current.play();
-      setIsPlaying(true);
     }
   };
 
@@ -197,8 +287,17 @@ const LocalAudioPlayer = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* File Upload */}
-        <div className="space-y-2">
+        {/* File Upload with Drag & Drop */}
+        <div 
+          className={`space-y-2 p-4 rounded-lg border-2 border-dashed transition-colors ${
+            isDragOver 
+              ? 'border-primary bg-primary/5' 
+              : 'border-border/50 hover:border-border'
+          }`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <Label htmlFor="audio-upload">Upload Audio Files</Label>
           <div className="flex gap-2">
             <Input
@@ -206,7 +305,7 @@ const LocalAudioPlayer = () => {
               type="file"
               ref={fileInputRef}
               multiple
-              accept="audio/*"
+              accept="audio/mp3,audio/mpeg,audio/wav,audio/ogg,audio/m4a,audio/flac,.mp3,.wav,.ogg,.m4a,.flac"
               onChange={handleFileUpload}
               className="flex-1"
             />
@@ -219,8 +318,41 @@ const LocalAudioPlayer = () => {
               Browse
             </Button>
           </div>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setTracks([]);
+                setCurrentTrack(null);
+                stopPlayback();
+                toast({ title: 'Playlist cleared' });
+              }}
+              disabled={tracks.length === 0}
+              className="gap-1"
+            >
+              Clear All
+            </Button>
+            {/* <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                if (tracks.length > 0) {
+                  const randomIndex = Math.floor(Math.random() * tracks.length);
+                  playTrack(tracks[randomIndex]);
+                }
+              }}
+              disabled={tracks.length === 0}
+              className="gap-1"
+            >
+              🎲 Random
+            </Button> */}
+          </div>
           <p className="text-xs text-muted-foreground">
             Supported formats: MP3, WAV, OGG, M4A, FLAC
+          </p>
+          <p className="text-xs text-blue-600">
+            💡 Tip: You can select multiple files at once or drag & drop them here
           </p>
         </div>
 
@@ -251,7 +383,18 @@ const LocalAudioPlayer = () => {
             </div>
             
             {/* Progress Bar */}
-            <div className="w-full bg-muted rounded-full h-2">
+            <div 
+              className="w-full bg-muted rounded-full h-2 cursor-pointer"
+              onClick={(e) => {
+                if (audioRef.current && duration) {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const clickX = e.clientX - rect.left;
+                  const newTime = (clickX / rect.width) * duration;
+                  audioRef.current.currentTime = newTime;
+                  setCurrentTime(newTime);
+                }
+              }}
+            >
               <div 
                 className="bg-primary h-2 rounded-full transition-all duration-300"
                 style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
