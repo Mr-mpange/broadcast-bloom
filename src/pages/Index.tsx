@@ -6,7 +6,6 @@ import ScheduleSection from "@/components/ScheduleSection";
 import DJSection from "@/components/DJSection";
 import FeaturesSection from "@/components/FeaturesSection";
 import BlogSection from "@/components/BlogSection";
-import TestimonialSection from "@/components/TestimonialSection";
 import ContactSection from "@/components/ContactSection";
 import Footer from "@/components/Footer";
 import MobilePlayer from "@/components/MobilePlayer";
@@ -59,7 +58,6 @@ const Index = () => {
         <DJSection />
         <FeaturesSection />
         <BlogSection />
-        <TestimonialSection />
         <ContactSection />
       </main>
       <Footer />

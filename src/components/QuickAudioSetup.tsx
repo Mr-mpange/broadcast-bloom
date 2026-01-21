@@ -11,76 +11,43 @@ const QuickAudioSetup = () => {
   const [loading, setLoading] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
 
+  // Real audio content for radio station (remove test data)
   const setupAudioContent = async () => {
     setLoading(true);
     try {
-      // Real audio content for radio station
-      const realAudioData = [
-        // Station Jingles (Production-ready)
-        { name: 'PULSE FM Station ID', artist: 'PULSE FM Production', content_type: 'jingle', genre: 'Station ID', category: 'branding', duration: 15 },
-        { name: 'Morning Drive Intro', artist: 'PULSE FM Production', content_type: 'jingle', genre: 'Show Intro', category: 'programming', duration: 10 },
-        { name: 'Afternoon Vibes Intro', artist: 'PULSE FM Production', content_type: 'jingle', genre: 'Show Intro', category: 'programming', duration: 12 },
-        { name: 'Evening Mix Intro', artist: 'PULSE FM Production', content_type: 'jingle', genre: 'Show Intro', category: 'programming', duration: 8 },
-        { name: 'News Update Jingle', artist: 'PULSE FM Production', content_type: 'jingle', genre: 'News', category: 'programming', duration: 6 },
-        { name: 'Weather Report Jingle', artist: 'PULSE FM Production', content_type: 'jingle', genre: 'Weather', category: 'programming', duration: 5 },
-        { name: 'Traffic Update Jingle', artist: 'PULSE FM Production', content_type: 'jingle', genre: 'Traffic', category: 'programming', duration: 4 },
-        { name: 'Commercial Break Sweeper', artist: 'PULSE FM Production', content_type: 'jingle', genre: 'Sweeper', category: 'transitions', duration: 3 },
-        
-        // Royalty-Free Music (Legal to broadcast)
-        { name: 'Classical Morning', artist: 'Public Domain Orchestra', content_type: 'music', genre: 'Classical', category: 'instrumental', duration: 210 },
-        { name: 'Jazz Cafe', artist: 'Royalty Free Jazz Ensemble', content_type: 'music', genre: 'Jazz', category: 'instrumental', duration: 195 },
-        { name: 'Acoustic Sunrise', artist: 'Creative Commons Artists', content_type: 'music', genre: 'Acoustic', category: 'folk', duration: 185 },
-        { name: 'Electronic Chill', artist: 'Open Source Beats', content_type: 'music', genre: 'Chillout', category: 'electronic', duration: 205 },
-        { name: 'World Fusion', artist: 'Global Commons', content_type: 'music', genre: 'World', category: 'fusion', duration: 230 },
-        
-        // Station Promos
-        { name: 'PULSE FM App Promo', artist: 'PULSE FM Marketing', content_type: 'advertisement', genre: 'Station Promo', category: 'internal', duration: 30 },
-        { name: 'Community Events Promo', artist: 'PULSE FM Marketing', content_type: 'advertisement', genre: 'Community', category: 'public-service', duration: 25 },
-        { name: 'Contest Announcement', artist: 'PULSE FM Marketing', content_type: 'advertisement', genre: 'Contest', category: 'promotional', duration: 20 },
-      ];
+      // Check if content already exists
+      const { data: existingContent, error: checkError } = await (supabase as any)
+        .from('audio_content')
+        .select('id')
+        .limit(1);
 
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const item of realAudioData) {
-        try {
-          const { error } = await (supabase as any)
-            .from('audio_content')
-            .insert({
-              ...item,
-              file_path: `${item.content_type}s/${item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}.mp3`,
-              language: 'en',
-              explicit_content: false,
-              is_active: true,
-              play_count: 0,
-              upload_date: new Date().toISOString()
-            });
-
-          if (error) {
-            if (error.message.includes('duplicate') || error.code === '23505') {
-              // Duplicate entry, skip
-              continue;
-            }
-            throw error;
-          }
-          successCount++;
-        } catch (error) {
-          console.error(`Error inserting ${item.name}:`, error);
-          errorCount++;
-        }
+      if (checkError) {
+        throw checkError;
       }
 
-      setSetupComplete(true);
-      toast({
-        title: 'Real Audio Library Setup Complete!',
-        description: `Added ${successCount} professional audio items. ${errorCount > 0 ? `${errorCount} items were skipped (likely duplicates).` : ''} Ready for broadcast!`,
-      });
+      if (existingContent && existingContent.length > 0) {
+        toast({
+          title: 'Audio Library Ready',
+          description: 'Your audio content library is already set up and ready for broadcasting.',
+        });
+        setSetupComplete(true);
+        setLoading(false);
+        return;
+      }
 
-    } catch (error: any) {
-      console.error('Error setting up audio content:', error);
+      // If no content exists, show message that content needs to be uploaded
       toast({
-        title: 'Setup Failed',
-        description: error.message || 'Failed to setup audio content',
+        title: 'Audio Library Empty',
+        description: 'Upload your station jingles, music, and content through the Audio Content Manager.',
+        variant: 'default',
+      });
+      
+      setSetupComplete(false);
+    } catch (error: any) {
+      console.error('Error checking audio content:', error);
+      toast({
+        title: 'Setup Check Failed',
+        description: error.message || 'Failed to check audio content status',
         variant: 'destructive'
       });
     } finally {
@@ -127,18 +94,20 @@ const QuickAudioSetup = () => {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Your audio library appears to be empty. Click the button below to populate it with sample jingles and music tracks.
+                Your audio library is empty. Upload your station's jingles, music, and promotional content to get started.
               </AlertDescription>
             </Alert>
             
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                This will add:
+                To set up your radio station's audio library:
               </p>
               <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                <li>• 8 Station jingles (IDs, intros, transitions)</li>
-                <li>• 8 Sample music tracks (various genres)</li>
-                <li>• All items will be marked as active and ready to use</li>
+                <li>• Go to the Audio Content Manager</li>
+                <li>• Upload your station jingles and IDs</li>
+                <li>• Add your music library</li>
+                <li>• Upload promotional content and advertisements</li>
+                <li>• All content will be available for live broadcasting</li>
               </ul>
             </div>
 
@@ -148,14 +117,14 @@ const QuickAudioSetup = () => {
               className="w-full"
             >
               <Zap className="h-4 w-4 mr-2" />
-              {loading ? 'Setting up...' : 'Setup Audio Library'}
+              {loading ? 'Checking...' : 'Check Audio Library Status'}
             </Button>
           </>
         ) : (
           <Alert>
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
-              Your audio library is ready! You can now use jingles and music in the broadcast control panel.
+              Your audio library is ready for broadcasting! Upload additional content through the Audio Content Manager.
             </AlertDescription>
           </Alert>
         )}

@@ -1,6 +1,5 @@
 import { Radio, Instagram, Twitter, Facebook, Youtube, Mail, Phone, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import AppStoreBadges from "@/components/AppStoreBadges";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -93,10 +92,23 @@ const Footer = () => {
               ))}
             </div>
 
-            {/* App Store Badges */}
+            {/* Download Links */}
             <div className="mt-6">
               <h5 className="font-semibold text-foreground mb-3 text-sm">Get the App</h5>
-              <AppStoreBadges className="flex-col" />
+              <div className="flex flex-col gap-2">
+                <Button variant="outline" size="sm" className="justify-start h-auto p-2">
+                  <div className="text-left">
+                    <div className="text-xs text-muted-foreground">Download on the</div>
+                    <div className="font-semibold text-sm">App Store</div>
+                  </div>
+                </Button>
+                <Button variant="outline" size="sm" className="justify-start h-auto p-2">
+                  <div className="text-left">
+                    <div className="text-xs text-muted-foreground">Get it on</div>
+                    <div className="font-semibold text-sm">Google Play</div>
+                  </div>
+                </Button>
+              </div>
             </div>
           </div>
 

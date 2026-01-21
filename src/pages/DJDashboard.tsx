@@ -11,10 +11,9 @@ import LiveShowManager from "@/components/LiveShowManager";
 import BlogManagement from "@/components/BlogManagement";
 import LiveChat from "@/components/LiveChat";
 import LocalAudioPlayer from "@/components/LocalAudioPlayer";
-import BroadcastControlPanel from "@/components/BroadcastControlPanel";
 import AudioContentManager from "@/components/AudioContentManager";
-import QuickAudioSetup from "@/components/QuickAudioSetup";
 import LiveAudioQueue from "@/components/LiveAudioQueue";
+import EnterpriseBroadcastManager from "@/components/EnterpriseBroadcastManager";
 import GeolocationListenerMap from "@/components/GeolocationListenerMap";
 import HardwareMixerControl from "@/components/HardwareMixerControl";
 import MixerTroubleshootingGuide from "@/components/MixerTroubleshootingGuide";
@@ -163,9 +162,9 @@ const DJDashboard = () => {
           </h1>
         </div>
 
-        {/* Broadcast Control Panel - Priority Component */}
+        {/* Enterprise Broadcast Manager - Priority Component */}
         <div className="mb-6 sm:mb-8">
-          <BroadcastControlPanel />
+          <EnterpriseBroadcastManager />
         </div>
 
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-8">
@@ -382,19 +381,15 @@ const DJDashboard = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
                       <Mic className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                      Professional Broadcasting Controls
+                      Enterprise Broadcasting Platform
                     </CardTitle>
                     <p className="text-xs sm:text-sm text-muted-foreground">
-                      Full control panel for live broadcasting with role-based permissions, microphone control, and emergency override capabilities
+                      Professional-grade live streaming with enterprise audio processing, real-time analytics, and global CDN distribution
                     </p>
                   </CardHeader>
                 </Card>
                 
-                <QuickAudioSetup />
-                
-                <LiveAudioQueue />
-                
-                <BroadcastControlPanel />
+                <EnterpriseBroadcastManager />
               </div>
             </TabsContent>
             <TabsContent value="listeners" className="mt-6">
