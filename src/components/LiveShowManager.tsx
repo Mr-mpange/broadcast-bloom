@@ -453,7 +453,7 @@ const LiveShowManager = ({ shows }: LiveShowManagerProps) => {
                               // Multiple layers of safety checks
                               if (!liveShow || 
                                   typeof liveShow !== 'object' || 
-                                  !liveShow.hasOwnProperty('image_url') ||
+                                  !Object.prototype.hasOwnProperty.call(liveShow, 'image_url') ||
                                   !liveShow.image_url || 
                                   typeof liveShow.image_url !== 'string' ||
                                   liveShow.image_url.trim() === '') {

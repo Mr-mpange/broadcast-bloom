@@ -181,14 +181,15 @@ const EnterpriseBroadcastManager = () => {
       }));
     }, 5000);
 
-    (window as any).analyticsInterval = analyticsInterval;
+    (window as Window & { analyticsInterval?: NodeJS.Timeout }).analyticsInterval = analyticsInterval;
   };
 
   // Stop broadcast analytics
   const stopBroadcastAnalytics = () => {
-    if ((window as any).analyticsInterval) {
-      clearInterval((window as any).analyticsInterval);
-      (window as any).analyticsInterval = null;
+    const windowWithInterval = window as Window & { analyticsInterval?: NodeJS.Timeout };
+    if (windowWithInterval.analyticsInterval) {
+      clearInterval(windowWithInterval.analyticsInterval);
+      windowWithInterval.analyticsInterval = undefined;
     }
     
     setBroadcastStats({

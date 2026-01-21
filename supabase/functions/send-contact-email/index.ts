@@ -99,7 +99,7 @@ const handler = async (req: Request): Promise<Response> => {
     const results = await Promise.allSettled(emailPromises);
     
     let successCount = 0;
-    let errors = [];
+    const errors = [];
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i];

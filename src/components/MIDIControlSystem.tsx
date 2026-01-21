@@ -249,16 +249,17 @@ const MIDIControlSystem = () => {
       case 'channel1_volume':
       case 'channel2_volume':
       case 'channel3_volume':
-      case 'channel4_volume':
+      case 'channel4_volume': {
         const channelNumber = action.replace('channel', '').replace('_volume', '');
         if (audioContextRef.current && processingNodesRef.current.has(`channel${channelNumber}`)) {
           const channelGain = processingNodesRef.current.get(`channel${channelNumber}`)!;
           channelGain.gain.setTargetAtTime(normalizedValue, audioContextRef.current.currentTime, 0.01);
         }
         break;
+      }
 
       case 'channel1_mute':
-      case 'channel2_mute':
+      case 'channel2_mute': {
         const muteChannelNumber = action.replace('channel', '').replace('_mute', '');
         if (audioContextRef.current && processingNodesRef.current.has(`channel${muteChannelNumber}`)) {
           const channelGain = processingNodesRef.current.get(`channel${muteChannelNumber}`)!;
@@ -267,6 +268,7 @@ const MIDIControlSystem = () => {
           channelGain.gain.setTargetAtTime(newGain, audioContextRef.current.currentTime, 0.01);
         }
         break;
+      }
 
       case 'transport_play_pause':
         // Trigger play/pause action
